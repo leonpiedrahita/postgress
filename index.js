@@ -1,5 +1,5 @@
 const express = require("express");
-const prisma = require('./src/prisma-cliente'); // Importa el cliente Prisma extendido
+const prisma = require('./src/prisma-client'); // Importa el cliente Prisma extendido
 const app = express();
 const PORT = process.env.PORT || 5000;
 const apiRouter = require('./src/routes'); // Importo el index donde están las rutas
@@ -12,7 +12,8 @@ app.use(express.urlencoded({ extended: true }));
 app.use((req, res, next) => {
     // Supongamos que el usuario está autenticado y su información está en req.user
     // Esto depende de cómo estés manejando la autenticación en tu proyecto
-    prisma.userId = req.user?.id || 'anonymous'; // Si no hay usuario, usa "anonymous"
+/*     prisma.userId = req.user?.id || 'anonymous'; // Si no hay usuario, usa "anonymous"
+ */    prisma.userId = "testUser"; // Valor temporal para pruebas
     next();
 });
 

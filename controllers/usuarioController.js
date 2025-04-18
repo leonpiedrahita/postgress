@@ -1,7 +1,7 @@
 
 const bcrypt = require("bcryptjs");
 const tokenServices = require('../services/token');
-const prisma = require('../prisma-client'); // Importa el cliente Prisma con la extensión de auditoría
+const prisma = require('../src/prisma-client'); // Importa el cliente Prisma con la extensión de auditoría
 
 exports.listar = async (req, res, next) => {
   try {
