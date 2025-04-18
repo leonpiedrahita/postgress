@@ -1,6 +1,10 @@
 const router = require('express').Router()
 const clienteController = require('../../../controllers/clienteController')
 
+const prisma = require('../../middleware/prisma-audit-extension.js'); // Ajusta la ruta según tu estructura
+
+
+
 
 //Hasta este punto ya vamos en api/usuario ya comenzamos a
 // manejar los metodos

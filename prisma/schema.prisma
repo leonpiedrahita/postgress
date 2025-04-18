@@ -13,6 +13,19 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model AuditLog {
+  id          Int      @id @default(autoincrement()) // Clave primaria
+  timestamp   DateTime @default(now())              // Fecha y hora del cambio
+  userId      String?                               // Identificación del usuario (si aplica)
+  action      String                                // Tipo de acción: CREATE, UPDATE, DELETE
+  tableName   String                                // Nombre de la tabla afectada
+  recordId    Int?                                  // ID del registro afectado
+  beforeData  Json?                                 // Datos antes del cambio
+  afterData   Json?                                 // Datos después del cambio
+  
+  @@map("audit_logs") // Mapeamos el modelo al nombre original de la tabla/colección
+}
+
 model Category {
   id        Int       @id @default(autoincrement())
   name      String    @unique @db.VarChar(60)
