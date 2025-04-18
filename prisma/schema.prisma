@@ -1,0 +1,62 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Category {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique @db.VarChar(60)
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  products  Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(120)
+  description String?  @db.Text
+  price       Decimal  @db.Decimal(10, 2)
+  currency    String   @default("USD") @db.VarChar(3)
+  quantity    Int      @default(0)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  categoryId Int      @map("category_id")
+  category    Category @relation(fields: [categoryId], references: [id])
+
+  @@map("products")
+}
+
+model Usuario {
+  id        Int      @id @default(autoincrement()) // Prisma no utiliza ObjectId, así que usamos Int autoincremental
+  nombre    String
+  email     String   @unique
+  password  String
+  rol       String?
+  estado    Int      @default(1)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+model Cliente {
+  id                Int       @id @default(autoincrement()) // Prisma no utiliza ObjectId, se usa un Int autoincremental
+  nombre            String
+  nit               String   @unique // Campo único para el NIT
+  sede              Json?     // Array convertido a tipo Json opcional
+  contactoprincipal Json      // Array convertido a tipo Json requerido
+  createdAt         DateTime  @default(now()) // Timestamp automático
+  updatedAt         DateTime  @updatedAt     // Se actualiza automáticamente
+
+  @@map("clientes") // Mapeamos el modelo al nombre original de la tabla/colección
+}
