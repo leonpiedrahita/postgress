@@ -1,10 +1,14 @@
 const express = require("express");
+const morgan = require("morgan");
 const prisma = require('./src/prisma-client'); // Importa el cliente Prisma extendido
 const app = express();
 const PORT = process.env.PORT || 5000;
 const apiRouter = require('./src/routes'); // Importo el index donde están las rutas
+const cors = require("cors");
 
+app.use(cors());
 // Middleware para parsear JSON y datos URL-encoded
+app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -19,6 +23,8 @@ app.use((req, res, next) => {
 
 // Rutas principales
 app.use("/api", apiRouter);
+
+
 
 // Iniciar el servidor
 app.listen(PORT, () => {

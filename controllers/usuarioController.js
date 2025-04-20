@@ -91,3 +91,68 @@ exports.actualizar = async (req, res, next) => {
     next(err);
   }
 };
+
+exports.actualizarfirma = async (req, res) => {
+  try {
+    // Decodificar el token para obtener el ID o email del usuario
+    const validationResponse = await tokenServices.decode(req.headers.token);
+       
+
+    // Verifica que el ID del usuario esté presente en la respuesta decodificada
+    if (!validationResponse.id) {
+      return res.status(400).json({
+        error: 'El token no contiene un ID válido para el usuario.',
+      });
+    }
+
+    // Actualizar el campo firma del usuario
+    const usuarioActualizado = await prisma.usuario.update({
+      where: { id: validationResponse.id }, // Cambia esto a "email" si usas email en su lugar
+      data: { firma: req.body.firma },
+    });
+
+    // Responder con la información del usuario actualizado
+    res.status(200).json({
+      message: 'Firma actualizada exitosamente',
+      usuario: usuarioActualizado,
+    });
+  } catch (err) {
+    console.error('Error al actualizar la firma:', err.message);
+    res.status(500).json({
+      error: err.message,
+    });
+  }
+};
+exports.buscarfirma = async (req, res) => {
+  try {
+    // Decodificar el token para obtener el ID del usuario
+    const validationResponse = await tokenServices.decode(req.headers.token);
+    // Verificar si el ID del usuario está presente
+    if (!validationResponse.id) {
+      return res.status(400).json({
+        error: 'El token no contiene un ID válido para el usuario.',
+      });
+    }
+
+    // Buscar la firma del usuario en la base de datos
+    const usuario = await prisma.usuario.findUnique({
+      where: { id: validationResponse.id },
+      select: { firma: true }, // Solo seleccionamos el campo "firma"
+    });
+
+    // Verificar si el usuario tiene una firma registrada
+    if (usuario && usuario.firma) {
+      /* console.log('Firma encontrada:', usuario.firma); */
+      return res.status(200).json({ firma: usuario.firma });
+    } else {
+      return res.status(404).json({
+        message: 'Firma No Registrada',
+      });
+    }
+  } catch (err) {
+    console.error('Error al buscar la firma:', err.message);
+    res.status(500).json({
+      error: err.message,
+    });
+  }
+};

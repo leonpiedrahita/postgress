@@ -27,6 +27,7 @@ exports.registrar = async (req, res) => {
         nombre: req.body.nombre,
         nit: req.body.nit,
         contactoprincipal: req.body.contactoprincipal, // Json
+        sede: [],
       },
     });
 
@@ -38,6 +39,7 @@ exports.registrar = async (req, res) => {
 };
 
 exports.actualizar = async (req, res) => {
+  
   try {
     const id = parseInt(req.params.id);
 

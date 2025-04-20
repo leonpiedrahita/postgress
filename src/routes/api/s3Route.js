@@ -1,0 +1,64 @@
+const express = require('express');
+const s3Controller = require('../../../controllers/s3Controller');
+const reporteController = require('../../../controllers/reporteController');
+const equipoController = require('../../../controllers/equipoController');
+const multer = require('multer');
+
+
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
+
+const router = express.Router();
+
+// Middleware para verificar si el archivo existe
+const validarArchivo = (req, res, next) => {
+    /* console.log("file",req.file) */
+    /* console.log('Equipo.id',JSON.parse(req.body.id_equipo))
+    console.log(typeof(req.body.id_equipo))  */  
+    /* console.log("reporte",JSON.parse(req.body.reporte))  */
+  if (!req.file) {
+    return res.status(400).json({ message: 'No se ha proporcionado un archivo' });
+  }
+  
+    next();  
+};
+
+// Ruta para guardar archivo en S3 y registrar reporte externo
+router.post(
+    '/guardar',
+    upload.single('file'),
+    validarArchivo,
+    s3Controller.guardarreporte,
+    reporteController.registrarexterno, 
+    equipoController.registrarreporteexterno,
+    (req, res) => {
+      // Responder una sola vez al finalizar todos los middlewares
+      res.status(201).json({
+        message: 'Archivo guardado y reporte externo creados correctamente',
+        id: req.idcreada
+      });
+    }
+  );
+  // Ruta para guardar archivo en S3 y registrar documento en equipo
+  router.post(
+    '/guardardocumento',
+    upload.single('file'),
+    validarArchivo,
+    s3Controller.guardardocumentoequipo, 
+    equipoController.registrardocumento,
+    (req, res) => {
+      // Responder una sola vez al finalizar todos los middlewares
+      res.status(201).json({
+        message: 'Documento guardado y asociado al equipo',
+        
+      });
+    }
+  );
+
+// Buscar objetos en S3
+router.get('/buscar', s3Controller.buscar);
+
+// Obtener URL de un objeto en S3
+router.post('/buscarurl', s3Controller.buscarurl);
+
+module.exports = router;
