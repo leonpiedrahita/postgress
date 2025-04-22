@@ -2,6 +2,7 @@ const express = require('express');
 const s3Controller = require('../../../controllers/s3Controller');
 const reporteController = require('../../../controllers/reporteController');
 const equipoController = require('../../../controllers/equipoController');
+const refequipoController = require('../../../controllers/refequipoController');
 const multer = require('multer');
 
 
@@ -39,6 +40,7 @@ router.post(
       });
     }
   );
+  
   // Ruta para guardar archivo en S3 y registrar documento en equipo
   router.post(
     '/guardardocumento',
@@ -46,6 +48,22 @@ router.post(
     validarArchivo,
     s3Controller.guardardocumentoequipo, 
     equipoController.registrardocumento,
+    (req, res) => {
+      // Responder una sola vez al finalizar todos los middlewares
+      res.status(201).json({
+        message: 'Documento guardado y asociado al equipo',
+        
+      });
+    }
+  );
+
+  // Ruta para guardar archivo en S3 y registrar documento en equipo
+  router.post(
+    '/guardardocumentoreferencia',
+    upload.single('file'),
+    validarArchivo,
+    s3Controller.guardardocumentoequipo, 
+    refequipoController.registrardocumento,
     (req, res) => {
       // Responder una sola vez al finalizar todos los middlewares
       res.status(201).json({

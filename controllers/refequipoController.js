@@ -3,14 +3,42 @@ const prisma = require('../src/prisma-client'); // Importa el cliente Prisma con
 // Listar todos los equipos
 exports.listar = async (req, res) => {
   try {
-    const equipos = await prisma.refEquipo.findMany();
+    // Obtener todos los refEquipos incluyendo los documentos legales relacionados
+    const equipos = await prisma.refEquipo.findMany({
+      include: {
+        documentosLegales: true, // Incluir los documentos legales relacionados
+      },
+    });
+
+    // Responder con la lista de equipos y sus documentos legales
     res.status(200).json(equipos);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err });
+    res.status(500).json({ error: 'Ocurrió un error al listar los equipos.', detalles: err.message });
   }
 };
 
+exports.listaruno = async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+
+    const equipo = await prisma.refEquipo.findUnique({
+      where: { id },
+      include: {
+        documentosLegales: true, // Incluye los documentos legales
+      },
+    });
+
+    if (!equipo) {
+      return res.status(404).json({ message: 'Equipo no encontrado' });
+    }
+
+    res.status(200).json(equipo);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+};
 // Registrar un nuevo equipo
 exports.registrar = async (req, res) => {
   try {
@@ -83,5 +111,28 @@ exports.actualizar = async (req, res) => {
     res.status(500).json({
       error: err,
     });
+  }
+};
+exports.registrardocumento = async (req, res) => {
+  console.log('req.body', req.body);
+  console.log('req.file', req.file);    
+  console.log('res.locals.llave', res.locals.llave);
+  try {
+    const id = parseInt(req.body.id_equipo);
+    const nombredocumento = JSON.parse(req.body.nombredocumento);
+    const nuevoDocumento = {
+      nombreDocumento: nombredocumento,
+      llaveDocumento: res.locals.llave,
+      fecha: new Date(),
+    };
+
+    await prisma.documentoLegal.create({
+      data: { ...nuevoDocumento, refEquipoId: id },
+    });
+
+    res.status(201).json({ message: 'Documento registrado' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
   }
 };

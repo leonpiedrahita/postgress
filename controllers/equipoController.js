@@ -44,8 +44,8 @@ exports.registrar = async (req, res) => {
         ubicacionNombre: req.body.nuevoequipo.ubicacion.nombre,
         ubicacionDireccion: req.body.nuevoequipo.ubicacion.direccion,
         estado: 'Activo',
-        placaDeInventario: req.body.nuevoequipo.placadeinventario,
-        tipoDeContrato: req.body.nuevoequipo.tipodecontrato,
+        placaDeInventario: req.body.nuevoequipo.placaDeInventario,
+        tipoDeContrato: req.body.nuevoequipo.tipoDeContrato,
         historialPropietarios: [{
           clienteId: req.body.nuevoequipo.cliente.id,
           propietarioId: req.body.nuevoequipo.propietario.id,

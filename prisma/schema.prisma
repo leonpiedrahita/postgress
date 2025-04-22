@@ -14,15 +14,15 @@ datasource db {
 }
 
 model AuditLog {
-  id          Int      @id @default(autoincrement()) // Clave primaria
-  timestamp   DateTime @default(now())              // Fecha y hora del cambio
-  userId      String?                               // Identificación del usuario (si aplica)
-  action      String                                // Tipo de acción: CREATE, UPDATE, DELETE
-  tableName   String                                // Nombre de la tabla afectada
-  recordId    Int?                                  // ID del registro afectado
-  beforeData  Json?                                 // Datos antes del cambio
-  afterData   Json?                                 // Datos después del cambio
-  
+  id         Int      @id @default(autoincrement()) // Clave primaria
+  timestamp  DateTime @default(now()) // Fecha y hora del cambio
+  userId     String? // Identificación del usuario (si aplica)
+  action     String // Tipo de acción: CREATE, UPDATE, DELETE
+  tableName  String // Nombre de la tabla afectada
+  recordId   Int? // ID del registro afectado
+  beforeData Json? // Datos antes del cambio
+  afterData  Json? // Datos después del cambio
+
   @@map("audit_logs") // Mapeamos el modelo al nombre original de la tabla/colección
 }
 
@@ -46,7 +46,7 @@ model Product {
   active      Boolean  @default(true)
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
-  categoryId Int      @map("category_id")
+  categoryId  Int      @map("category_id")
   category    Category @relation(fields: [categoryId], references: [id])
 
   @@map("products")
@@ -59,139 +59,172 @@ model Usuario {
   password  String
   rol       String?
   estado    Int      @default(1)
-  firma    String?
+  firma     String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   historialDeServicios HistorialServicio[] // Relación inversa con HistorialServicio
 
-
   @@map("usuarios") // Mapeamos el modelo al nombre original de la tabla/colección
 }
+
 model Cliente {
-  id                Int       @id @default(autoincrement()) // Clave primaria
-  nombre            String
-  nit               String    @unique // Campo único para el NIT
-  sede              Json?     // Array convertido a tipo Json opcional
-  contactoprincipal Json      // Array convertido a tipo Json requerido
+  id                     Int      @id @default(autoincrement()) // Clave primaria
+  nombre                 String
+  nit                    String   @unique // Campo único para el NIT
+  sede                   Json? // Array convertido a tipo Json opcional
+  contactoprincipal      Json // Array convertido a tipo Json requerido
   equiposComoPropietario Equipo[] @relation("ClientePropietario") // Relación inversa para equipos donde el cliente es propietario
-  equiposComoCliente      Equipo[] @relation("Cliente")          // Relación inversa para equipos donde el cliente es cliente
-  createdAt         DateTime  @default(now()) // Timestamp automático
-  updatedAt         DateTime  @updatedAt     // Se actualiza automáticamente
+  equiposComoCliente     Equipo[] @relation("Cliente") // Relación inversa para equipos donde el cliente es cliente
+  createdAt              DateTime @default(now()) // Timestamp automático
+  updatedAt              DateTime @updatedAt // Se actualiza automáticamente
 
   @@map("clientes") // Mapeamos el modelo al nombre original de la tabla/colección
 }
 
 model RefEquipo {
-  id                        Int      @id @default(autoincrement()) // Clave primaria
-  nombre                    String   @unique // Nombre del equipo
-  marca                     String   // Marca del equipo
-  fabricante                String   // Fabricante del equipo
-  servicio                  String   // Tipo de servicio
-  clasificacionriesgo       String   // Clasificación del riesgo
-  periodicidadmantenimiento String   // Periodicidad de mantenimiento
-  alto                      String   // Altura
-  ancho                     String   // Ancho
-  profundo                  String   // Profundidad
-  peso                      String   // Peso
-  voltaje                   String   // Voltaje
-  corriente                 String   // Corriente
-  potencia                  String   // Potencia
-  principiodemedicion       String   // Principio de medición
-  pruebasporhora            String   // Pruebas por hora
-  temperatura               String   // Temperatura
-  humedad                   String   // Humedad
-  agua                      String   // Requiere agua
-  desague                   String   // Requiere desagüe
-  recomendaciones           String   // Recomendaciones
+  id                        Int              @id @default(autoincrement()) // Clave primaria
+  nombre                    String           @unique // Nombre del equipo
+  marca                     String // Marca del equipo
+  fabricante                String // Fabricante del equipo
+  servicio                  String // Tipo de servicio
+  clasificacionriesgo       String // Clasificación del riesgo
+  periodicidadmantenimiento String // Periodicidad de mantenimiento
+  alto                      String // Altura
+  ancho                     String // Ancho
+  profundo                  String // Profundidad
+  peso                      String // Peso
+  voltaje                   String // Voltaje
+  corriente                 String // Corriente
+  potencia                  String // Potencia
+  principiodemedicion       String // Principio de medición
+  pruebasporhora            String // Pruebas por hora
+  temperatura               String // Temperatura
+  humedad                   String // Humedad
+  agua                      String // Requiere agua
+  desague                   String // Requiere desagüe
+  recomendaciones           String // Recomendaciones
   equipos                   Equipo[] // Relación inversa con Equipo
-  createdAt                 DateTime @default(now()) @map("created_at") // Timestamp de creación
-  updatedAt                 DateTime @updatedAt @map("updated_at")      // Timestamp de actualización
+  documentosLegales         DocumentoLegal[] // Relación con DocumentoLegal
+  createdAt                 DateTime         @default(now()) @map("created_at") // Timestamp de creación
+  updatedAt                 DateTime         @updatedAt @map("updated_at") // Timestamp de actualización
 
   @@map("ref_equipos") // Asegura que el nombre de la tabla en la base de datos sea "ref_equipos"
 }
 
 model Equipo {
-  id                   Int                   @id @default(autoincrement()) // Clave primaria
-  nombre               String                // Nombre del equipo
-  marca                String                // Marca del equipo
-  serie                String                @unique// Serie del equipo
-  idReferencia         Int                   // Clave foránea para RefEquipo
-  referencia           RefEquipo             @relation(fields: [idReferencia], references: [id]) // Relación con RefEquipo
-  propietarioId        Int                   // Clave foránea para Cliente como propietario
-  propietario          Cliente               @relation("ClientePropietario", fields: [propietarioId], references: [id]) // Relación con Cliente como propietario
-  clienteId            Int                   // Clave foránea para Cliente como cliente
-  cliente              Cliente               @relation("Cliente", fields: [clienteId], references: [id]) // Relación con Cliente como cliente
-  ubicacionNombre      String                // Nombre de la ubicación
-  ubicacionDireccion   String                // Dirección de la ubicación
-  estado               String                // Estado del equipo
-  historialPropietarios Json?                // Historial de propietarios (puede ser opcional)
-  fechaDeInstalacion   String?               // Fecha de instalación (puede ser opcional)
-  placaDeInventario    String                // Placa de inventario
-  tipoDeContrato       String                // Tipo de contrato
-  historialDeServicios HistorialServicio[]   // Relación con HistorialServicio
-  documentosLegales    DocumentoLegal[]      // Relación con DocumentoLegal
-  createdAt            DateTime              @default(now())              // Fecha de creación
-  updatedAt            DateTime              @updatedAt                   // Fecha de última actualización
+  id                    Int                 @id @default(autoincrement()) // Clave primaria
+  nombre                String // Nombre del equipo
+  marca                 String // Marca del equipo
+  serie                 String              @unique // Serie del equipo
+  idReferencia          Int // Clave foránea para RefEquipo
+  referencia            RefEquipo           @relation(fields: [idReferencia], references: [id]) // Relación con RefEquipo
+  propietarioId         Int // Clave foránea para Cliente como propietario
+  propietario           Cliente             @relation("ClientePropietario", fields: [propietarioId], references: [id]) // Relación con Cliente como propietario
+  clienteId             Int // Clave foránea para Cliente como cliente
+  cliente               Cliente             @relation("Cliente", fields: [clienteId], references: [id]) // Relación con Cliente como cliente
+  ubicacionNombre       String // Nombre de la ubicación
+  ubicacionDireccion    String // Dirección de la ubicación
+  estado                String // Estado del equipo
+  historialPropietarios Json? // Historial de propietarios (puede ser opcional)
+  fechaDeInstalacion    String? // Fecha de instalación (puede ser opcional)
+  placaDeInventario     String // Placa de inventario
+  tipoDeContrato        String // Tipo de contrato
+  historialDeServicios  HistorialServicio[] // Relación con HistorialServicio
+  documentosLegales     DocumentoLegal[] // Relación con DocumentoLegal
+  ingresos              Ingreso[] // Relación uno a muchos con Ingreso
+  createdAt             DateTime            @default(now()) // Fecha de creación
+  updatedAt             DateTime            @updatedAt // Fecha de última actualización
 
   @@map("equipos") // Nombre de la tabla en la base de datos
 }
 
 model HistorialServicio {
-  id                   Int      @id @default(autoincrement()) // Clave primaria
-  identificacionDeReporte String   // Identificación del reporte
-  fechaDeFinalizacion  String   // Fecha de finalización
-  tipoDeAsistencia     String   // Tipo de asistencia
-  responsableId        Int      // Clave foránea para Usuario responsable
-  responsable          Usuario  @relation(fields: [responsableId], references: [id]) // Relación con Usuario responsable
-  reporteExterno       Int      // Número del reporte externo
-  llaveReporte         String?  // Llave del reporte (opcional)
-  fecha                DateTime // Fecha del historial
-  equipoId             Int      // Clave foránea para Equipo
-  equipo               Equipo   @relation(fields: [equipoId], references: [id]) // Relación con Equipo
+  id                      Int      @id @default(autoincrement()) // Clave primaria
+  identificacionDeReporte String // Identificación del reporte
+  fechaDeFinalizacion     String // Fecha de finalización
+  tipoDeAsistencia        String // Tipo de asistencia
+  responsableId           Int // Clave foránea para Usuario responsable
+  responsable             Usuario  @relation(fields: [responsableId], references: [id]) // Relación con Usuario responsable
+  reporteExterno          Int // Número del reporte externo
+  llaveReporte            String? // Llave del reporte (opcional)
+  fecha                   DateTime // Fecha del historial
+  equipoId                Int // Clave foránea para Equipo
+  equipo                  Equipo   @relation(fields: [equipoId], references: [id]) // Relación con Equipo
 
   @@map("historial_servicios") // Nombre de la tabla en la base de datos
 }
 
 model DocumentoLegal {
-  id                   Int      @id @default(autoincrement()) // Clave primaria
-  nombreDocumento      String   // Nombre del documento
-  llaveDocumento       String   // Llave del documento
-  fecha                DateTime // Fecha del documento
-  equipoId             Int      // Clave foránea para Equipo
-  equipo               Equipo   @relation(fields: [equipoId], references: [id]) // Relación con Equipo
+  id              Int        @id @default(autoincrement()) // Clave primaria
+  nombreDocumento String // Nombre del documento
+  llaveDocumento  String // Llave del documento
+  fecha           DateTime // Fecha del documento
+  equipoId        Int? // Clave foránea para Equipo
+  equipo          Equipo?     @relation(fields: [equipoId], references: [id]) // Relación con Equipo
+  refEquipoId     Int? // Clave foránea para RefEquipo (puede ser opcional)
+  refEquipo       RefEquipo? @relation(fields: [refEquipoId], references: [id]) // Relación con RefEquipo
 
   @@map("documentos_legales") // Nombre de la tabla en la base de datos
 }
 
-model Reporte {
-  id                String   @id @default(cuid()) // Prisma usa `id` en vez de `_id`. Puedes usar `@default(uuid())` si prefieres UUID.
-  numero            Int?     @unique// Campo opcional
-  tipodeasistencia  String   // Campo obligatorio
-  duracion          String?  // Campo opcional
-  fechadeinicio     String   // Campo obligatorio
-  fechadefinalizacion String // Campo obligatorio
-  infoequipo        Json     // Prisma usa Json para objetos
-  propietario       String   // Campo obligatorio
-  nombrecliente     String   // Campo obligatorio
-  nitcliente        String   // Campo obligatorio
-  sedecliente       String   // Campo obligatorio
-  direccioncliente  String   // Campo obligatorio
-  profesionalcliente String? // Campo opcional
-  telefonocliente   String?  // Campo opcional
-  hallazgos         String?  // Campo opcional
-  actividades       String?  // Campo opcional
-  pruebas           String?  // Campo opcional
-  repuestos         String?  // Campo opcional
-  observaciones     String?  // Campo opcional
-  firmacliente      String?  // Campo opcional
-  firmaingeniero    String?  // Campo opcional
-  ingeniero         String   // Campo obligatorio
-  reporteexterno    Int      // Campo obligatorio
-  llavereporte      String?  // Campo opcional
+model Ingreso {
+  id          Int      @id @default(autoincrement()) // Clave primaria
+  equipoId    Int // Clave foránea para la tabla Equipo
+  equipo      Equipo   @relation(fields: [equipoId], references: [id]) // Relación con Equipo
+  etapaActual Int // Etapa actual del ingreso
+  ultimaEtapa Int // Última etapa alcanzada
+  estado      String // Estado del ingreso
+  etapas      Etapa[] // Relación uno a muchos con la tabla Etapa
+  createdAt   DateTime @default(now()) // Fecha de creación
+  updatedAt   DateTime @updatedAt // Fecha de última actualización
 
-  createdAt         DateTime @default(now()) @map("created_at") // Timestamps gestionados automáticamente
-  updatedAt         DateTime @updatedAt @map("updated_at")      // Timestamps gestionados automáticamente
+  @@map("ingresos") // Nombre de la tabla en la base de datos
+}
+
+model Etapa {
+  id          Int     @id @default(autoincrement()) // Clave primaria
+  ingresoId   Int // Clave foránea para la tabla Ingreso
+  ingreso     Ingreso @relation(fields: [ingresoId], references: [id]) // Relación con Ingreso
+  nombre      String // Nombre de la etapa
+  comentario  String? // Comentario asociado a la etapa (opcional)
+  responsable String? // Responsable de esta etapa
+  fecha       String? // Fecha de la etapa
+  ubicacion   String // Ubicación asociada a la etapa
+
+  createdAt DateTime @default(now()) // Fecha de creación
+
+  @@map("etapas") // Nombre de la tabla en la base de datos
+}
+
+model Reporte {
+  id                  String  @id @default(cuid()) // Prisma usa `id` en vez de `_id`. Puedes usar `@default(uuid())` si prefieres UUID.
+  numero              Int?    @unique // Campo opcional
+  tipodeasistencia    String // Campo obligatorio
+  duracion            String? // Campo opcional
+  fechadeinicio       String // Campo obligatorio
+  fechadefinalizacion String // Campo obligatorio
+  infoequipo          Json // Prisma usa Json para objetos
+  propietario         String // Campo obligatorio
+  nombrecliente       String // Campo obligatorio
+  nitcliente          String // Campo obligatorio
+  sedecliente         String // Campo obligatorio
+  direccioncliente    String // Campo obligatorio
+  profesionalcliente  String? // Campo opcional
+  telefonocliente     String? // Campo opcional
+  hallazgos           String? // Campo opcional
+  actividades         String? // Campo opcional
+  pruebas             String? // Campo opcional
+  repuestos           String? // Campo opcional
+  observaciones       String? // Campo opcional
+  firmacliente        String? // Campo opcional
+  firmaingeniero      String? // Campo opcional
+  ingeniero           String // Campo obligatorio
+  reporteexterno      Int // Campo obligatorio
+  llavereporte        String? // Campo opcional
+
+  createdAt DateTime @default(now()) @map("created_at") // Timestamps gestionados automáticamente
+  updatedAt DateTime @updatedAt @map("updated_at") // Timestamps gestionados automáticamente
 
   @@map("reporte") // Opcional: Mapea el modelo a una tabla con un nombre específico
 }

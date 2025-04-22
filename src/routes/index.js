@@ -16,7 +16,7 @@ const reporteRouter = require('./api/reporteRoute');
 
 const s3Router = require('./api/s3Route');
 
-/* const ordenRouter = require('./api/ordenesRoute'); */
+ const ordenRouter = require('./api/ingresoRoute'); 
 
  
 
@@ -35,7 +35,7 @@ router.use("/reporte", reporteRouter);//api/reporte
 
 router.use("/s3", s3Router);//api/s3 
 
-/* router.use("/orden", ordenRouter);//api/orden */
+ router.use("/ingreso", ordenRouter);//api/ingreso
 
 
 

@@ -13,6 +13,7 @@ router.post("/registrar",refequipoController.registrar);
 
 router.patch("/actualizar/:id",refequipoController.actualizar);
 
+router.get("/listaruno/:id",refequipoController.listaruno);
 
 
 //.com/api/usuario/actualizar/id del elemento de la colección que quiero modificar
