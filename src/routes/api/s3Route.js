@@ -4,7 +4,7 @@ const reporteController = require('../../../controllers/reporteController');
 const equipoController = require('../../../controllers/equipoController');
 const refequipoController = require('../../../controllers/refequipoController');
 const multer = require('multer');
-
+const auth = require('../../middleware/auth');
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
@@ -28,6 +28,7 @@ const validarArchivo = (req, res, next) => {
 router.post(
     '/guardar',
     upload.single('file'),
+    auth.verificarAdminSopCom,
     validarArchivo,
     s3Controller.guardarreporte,
     reporteController.registrarexterno, 
@@ -45,6 +46,7 @@ router.post(
   router.post(
     '/guardardocumento',
     upload.single('file'),
+    auth.verificarUsuario,
     validarArchivo,
     s3Controller.guardardocumentoequipo, 
     equipoController.registrardocumento,
@@ -61,6 +63,7 @@ router.post(
   router.post(
     '/guardardocumentoreferencia',
     upload.single('file'),
+    auth.verificarUsuario,
     validarArchivo,
     s3Controller.guardardocumentoequipo, 
     refequipoController.registrardocumento,
@@ -74,9 +77,9 @@ router.post(
   );
 
 // Buscar objetos en S3
-router.get('/buscar', s3Controller.buscar);
+router.get('/buscar',auth.verificarUsuario, s3Controller.buscar);
 
 // Obtener URL de un objeto en S3
-router.post('/buscarurl', s3Controller.buscarurl);
+router.post('/buscarurl',auth.verificarUsuario, s3Controller.buscarurl);
 
 module.exports = router;

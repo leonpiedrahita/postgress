@@ -255,3 +255,51 @@ exports.listaruno = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+// Buscar equipos de manera dinámica (incluyendo búsqueda por nombre del propietario)
+exports.buscarequipos = async (req, res) => {
+  try {
+    // Obtén los parámetros de búsqueda del cuerpo de la solicitud
+    const { nombre, serie, contrato, propietarioNombre } = req.body;
+
+    // Construye el objeto `where` dinámicamente según los parámetros proporcionados
+    const filtros = {};
+
+    if (nombre) {
+      filtros.nombre = { contains: nombre, mode: 'insensitive' }; // Busca equipos cuyo nombre contenga el texto (insensible a mayúsculas/minúsculas)
+    }
+
+    if (serie) {
+      filtros.serie = { equals: serie }; // Busca equipos por serie exacta
+    }
+
+    if (contrato) {
+      filtros.tipoDeContrato = { equals: contrato}; // Busca equipos por estado exacto
+    }
+
+    if (propietarioNombre) {
+      // Filtro para buscar equipos por el nombre del propietario
+      filtros.propietario = {
+        nombre: { contains: propietarioNombre, mode: 'insensitive' }, // Busca propietarios cuyo nombre contenga el texto
+      };
+    }
+
+    // Realiza la consulta con los filtros dinámicos
+    const equipos = await prisma.equipo.findMany({
+      where: filtros, // Aplica los filtros dinámicos
+      include: {
+        propietario: true, // Incluye información del propietario
+        cliente: true, // Incluye información del cliente
+        referencia: true, // Incluye información de la referencia
+        historialDeServicios: true, // Incluye el historial de servicios
+        documentosLegales: true, // Incluye documentos legales
+      },
+    });
+
+    // Responde con los equipos encontrados
+    res.status(200).json(equipos);
+  } catch (err) {
+    // Manejo de errores
+    console.error('Error al buscar equipos:', err);
+    res.status(500).json({ error: 'Ocurrió un error al buscar los equipos.', detalles: err.message });
+  }
+};

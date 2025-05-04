@@ -141,15 +141,16 @@ model Equipo {
 
 model HistorialServicio {
   id                      Int      @id @default(autoincrement()) // Clave primaria
-  identificacionDeReporte String // Identificación del reporte
-  fechaDeFinalizacion     String // Fecha de finalización
-  tipoDeAsistencia        String // Tipo de asistencia
-  responsableId           Int // Clave foránea para Usuario responsable
+  identificacionDeReporte String   // Clave foránea para Reporte
+  reporte                 Reporte  @relation(fields: [identificacionDeReporte], references: [id]) // Relación con Reporte
+  fechaDeFinalizacion     String   // Fecha de finalización
+  tipoDeAsistencia        String   // Tipo de asistencia
+  responsableId           Int      // Clave foránea para Usuario responsable
   responsable             Usuario  @relation(fields: [responsableId], references: [id]) // Relación con Usuario responsable
-  reporteExterno          Int // Número del reporte externo
-  llaveReporte            String? // Llave del reporte (opcional)
+  reporteExterno          Int      // Número del reporte externo
+  llaveReporte            String?  // Llave del reporte (opcional)
   fecha                   DateTime // Fecha del historial
-  equipoId                Int // Clave foránea para Equipo
+  equipoId                Int      // Clave foránea para Equipo
   equipo                  Equipo   @relation(fields: [equipoId], references: [id]) // Relación con Equipo
 
   @@map("historial_servicios") // Nombre de la tabla en la base de datos
@@ -200,31 +201,33 @@ model Etapa {
 model Reporte {
   id                  String  @id @default(cuid()) // Prisma usa `id` en vez de `_id`. Puedes usar `@default(uuid())` si prefieres UUID.
   numero              Int?    @unique // Campo opcional
-  tipodeasistencia    String // Campo obligatorio
-  duracion            String? // Campo opcional
-  fechadeinicio       String // Campo obligatorio
-  fechadefinalizacion String // Campo obligatorio
-  infoequipo          Json // Prisma usa Json para objetos
-  propietario         String // Campo obligatorio
-  nombrecliente       String // Campo obligatorio
-  nitcliente          String // Campo obligatorio
-  sedecliente         String // Campo obligatorio
-  direccioncliente    String // Campo obligatorio
-  profesionalcliente  String? // Campo opcional
-  telefonocliente     String? // Campo opcional
-  hallazgos           String? // Campo opcional
-  actividades         String? // Campo opcional
-  pruebas             String? // Campo opcional
-  repuestos           String? // Campo opcional
-  observaciones       String? // Campo opcional
-  firmacliente        String? // Campo opcional
-  firmaingeniero      String? // Campo opcional
-  ingeniero           String // Campo obligatorio
-  reporteexterno      Int // Campo obligatorio
-  llavereporte        String? // Campo opcional
+  tipodeasistencia    String   // Campo obligatorio
+  duracion            String?  // Campo opcional
+  fechadeinicio       String   // Campo obligatorio
+  fechadefinalizacion String   // Campo obligatorio
+  infoequipo          Json     // Prisma usa Json para objetos
+  propietario         String   // Campo obligatorio
+  nombrecliente       String   // Campo obligatorio
+  nitcliente          String   // Campo obligatorio
+  sedecliente         String   // Campo obligatorio
+  direccioncliente    String   // Campo obligatorio
+  profesionalcliente  String?  // Campo opcional
+  telefonocliente     String?  // Campo opcional
+  hallazgos           String?  // Campo opcional
+  actividades         String?  // Campo opcional
+  pruebas             String?  // Campo opcional
+  repuestos           String?  // Campo opcional
+  observaciones       String?  // Campo opcional
+  firmacliente        String?  // Campo opcional
+  firmaingeniero      String?  // Campo opcional
+  ingeniero           String   // Campo obligatorio
+  reporteexterno      Int      // Campo obligatorio
+  llavereporte        String?  // Campo opcional
 
   createdAt DateTime @default(now()) @map("created_at") // Timestamps gestionados automáticamente
   updatedAt DateTime @updatedAt @map("updated_at") // Timestamps gestionados automáticamente
+
+  historialServicios HistorialServicio[] // Relación inversa con HistorialServicio
 
   @@map("reporte") // Opcional: Mapea el modelo a una tabla con un nombre específico
 }
