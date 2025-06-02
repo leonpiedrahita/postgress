@@ -8,10 +8,12 @@ exports.listar = async (req, res) => {
       include: {
         propietario: true, // Incluye información del propietario
         cliente: true, // Incluye información del cliente
+        proveedor: true, // Incluye información del proveedor
         referencia: true, // Incluye información de la referencia
         historialDeServicios: true, // Incluye el historial de servicios
         documentosLegales: true, // Incluye documentos legales
-      },
+        
+    }
     });
     res.status(200).json(equipos);
   } catch (err) {
@@ -41,6 +43,7 @@ exports.registrar = async (req, res) => {
         idReferencia: req.body.nuevoequipo.id,
         propietarioId: req.body.nuevoequipo.propietario.id,
         clienteId: req.body.nuevoequipo.cliente.id,
+        proveedorId: req.body.nuevoequipo.proveedor.id,
         ubicacionNombre: req.body.nuevoequipo.ubicacion.nombre,
         ubicacionDireccion: req.body.nuevoequipo.ubicacion.direccion,
         estado: 'Activo',
@@ -49,6 +52,7 @@ exports.registrar = async (req, res) => {
         historialPropietarios: [{
           clienteId: req.body.nuevoequipo.cliente.id,
           propietarioId: req.body.nuevoequipo.propietario.id,
+          proveedorId: req.body.nuevoequipo.proveedor.id,
           ubicacionNombre: req.body.nuevoequipo.ubicacion.nombre,
           ubicacionDireccion: req.body.nuevoequipo.ubicacion.direccion,
           responsableId: validationResponse.id,
@@ -79,12 +83,13 @@ exports.actualizar = async (req, res) => {
       ubicacionDireccion,
       cliente,
       propietario,
+      proveedor,
       placaDeInventario,
       tipoDeContrato
     } = req.body;
 
     // Verifica que todos los campos obligatorios estén presentes
-    if (!placaDeInventario || !tipoDeContrato || !ubicacionNombre || !ubicacionDireccion || !cliente || !propietario) {
+    if (!placaDeInventario || !tipoDeContrato || !ubicacionNombre || !ubicacionDireccion || !cliente || !propietario ||!proveedor) {
       return res.status(400).json({ error: "Todos los campos son obligatorios" });
     }
 
@@ -107,6 +112,7 @@ exports.actualizar = async (req, res) => {
     historialActualizado.push({
       clienteId: cliente.id,
       propietarioId: propietario.id,
+      proveedorId: proveedor.id,
       ubicacionNombre,
       ubicacionDireccion,
       responsableId: validationResponse.id,
@@ -124,6 +130,7 @@ exports.actualizar = async (req, res) => {
         tipoDeContrato, // Actualiza el tipo de contrato
         cliente: { connect: { id: cliente.id } }, // Conecta al cliente por ID
         propietario: { connect: { id: propietario.id } }, // Conecta al propietario por ID
+        proveedor: { connect: { id: proveedor.id } }, // Conecta al proveedor por ID
         historialPropietarios: historialActualizado, // Reemplaza con el historial actualizado
       },
     });
@@ -239,6 +246,7 @@ exports.listaruno = async (req, res) => {
       include: {
         referencia: true, // Incluye la información de la relación RefEquipo
         propietario: true, // Incluye la información del propietario (Cliente)
+        proveedor: true, // Incluye la información del proveedor
         cliente: true, // Incluye la información del cliente (Cliente)
         historialDeServicios: true, // Incluye el historial de servicios
         documentosLegales: true, // Incluye los documentos legales
@@ -289,6 +297,7 @@ exports.buscarequipos = async (req, res) => {
       include: {
         propietario: true, // Incluye información del propietario
         cliente: true, // Incluye información del cliente
+        proveedor: true, // Incluye información del proveedor
         referencia: true, // Incluye información de la referencia
         historialDeServicios: true, // Incluye el historial de servicios
         documentosLegales: true, // Incluye documentos legales

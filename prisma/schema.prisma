@@ -76,6 +76,7 @@ model Cliente {
   contactoprincipal      Json // Array convertido a tipo Json requerido
   equiposComoPropietario Equipo[] @relation("ClientePropietario") // Relación inversa para equipos donde el cliente es propietario
   equiposComoCliente     Equipo[] @relation("Cliente") // Relación inversa para equipos donde el cliente es cliente
+  equiposComoProveedor   Equipo[] @relation("Proveedor") // Relación inversa para equipos donde el cliente es cliente
   createdAt              DateTime @default(now()) // Timestamp automático
   updatedAt              DateTime @updatedAt // Se actualiza automáticamente
 
@@ -123,6 +124,8 @@ model Equipo {
   propietario           Cliente             @relation("ClientePropietario", fields: [propietarioId], references: [id]) // Relación con Cliente como propietario
   clienteId             Int // Clave foránea para Cliente como cliente
   cliente               Cliente             @relation("Cliente", fields: [clienteId], references: [id]) // Relación con Cliente como cliente
+  proveedorId           Int // Clave foránea para Cliente como cliente
+  proveedor             Cliente             @relation("Proveedor", fields: [proveedorId], references: [id]) // Relación con Cliente como cliente
   ubicacionNombre       String // Nombre de la ubicación
   ubicacionDireccion    String // Dirección de la ubicación
   estado                String // Estado del equipo
