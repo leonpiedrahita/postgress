@@ -64,6 +64,7 @@ model Usuario {
   updatedAt DateTime @updatedAt
 
   historialDeServicios HistorialServicio[] // Relación inversa con HistorialServicio
+  historialPropietario HistorialPropietario[] // Relación inversa con HistorialServicio
 
   @@map("usuarios") // Mapeamos el modelo al nombre original de la tabla/colección
 }
@@ -76,7 +77,11 @@ model Cliente {
   contactoprincipal      Json // Array convertido a tipo Json requerido
   equiposComoPropietario Equipo[] @relation("ClientePropietario") // Relación inversa para equipos donde el cliente es propietario
   equiposComoCliente     Equipo[] @relation("Cliente") // Relación inversa para equipos donde el cliente es cliente
-  equiposComoProveedor   Equipo[] @relation("Proveedor") // Relación inversa para equipos donde el cliente es cliente
+  /* equiposComoProveedor   Equipo[] @relation("Proveedor") // Relación inversa para equipos donde el cliente es cliente */
+  equiposComoPropietarioHistorial HistorialPropietario[] @relation("ClientePropietarioHistorial") // Relación inversa para equipos donde el cliente es propietario
+  equiposComoClienteHistorial     HistorialPropietario[] @relation("ClienteHistorial") // Relación inversa para equipos donde el cliente es cliente
+ /*  equiposComoProveedorHistorial   HistorialPropietario[] @relation("ProveedorHistorial") // Relación inversa para equipos donde el cliente es cliente
+   */
   createdAt              DateTime @default(now()) // Timestamp automático
   updatedAt              DateTime @updatedAt // Se actualiza automáticamente
 
@@ -124,12 +129,12 @@ model Equipo {
   propietario           Cliente             @relation("ClientePropietario", fields: [propietarioId], references: [id]) // Relación con Cliente como propietario
   clienteId             Int // Clave foránea para Cliente como cliente
   cliente               Cliente             @relation("Cliente", fields: [clienteId], references: [id]) // Relación con Cliente como cliente
-  proveedorId           Int // Clave foránea para Cliente como cliente
-  proveedor             Cliente             @relation("Proveedor", fields: [proveedorId], references: [id]) // Relación con Cliente como cliente
+/*   proveedorId           Int // Clave foránea para Cliente como cliente
+  proveedor             Cliente             @relation("Proveedor", fields: [proveedorId], references: [id]) // Relación con Cliente como cliente */
   ubicacionNombre       String // Nombre de la ubicación
   ubicacionDireccion    String // Dirección de la ubicación
   estado                String // Estado del equipo
-  historialPropietarios Json? // Historial de propietarios (puede ser opcional)
+  historialPropietarios HistorialPropietario[] // Relación con HistorialPropietario
   fechaDeInstalacion    String? // Fecha de instalación (puede ser opcional)
   placaDeInventario     String // Placa de inventario
   tipoDeContrato        String // Tipo de contrato
@@ -157,6 +162,25 @@ model HistorialServicio {
   equipo                  Equipo   @relation(fields: [equipoId], references: [id]) // Relación con Equipo
 
   @@map("historial_servicios") // Nombre de la tabla en la base de datos
+}
+
+model HistorialPropietario {
+  id                      Int      @id @default(autoincrement()) // Clave primaria
+  propietarioId         Int // Clave foránea para Cliente como propietario
+  propietario           Cliente             @relation("ClientePropietarioHistorial", fields: [propietarioId], references: [id]) // Relación con Cliente como propietario
+  clienteId             Int // Clave foránea para Cliente como cliente
+  cliente               Cliente             @relation("ClienteHistorial", fields: [clienteId], references: [id]) // Relación con Cliente como cliente
+  /* proveedorId           Int // Clave foránea para Cliente como cliente
+  proveedor             Cliente             @relation("ProveedorHistorial", fields: [proveedorId], references: [id]) // Relación con Cliente como cliente */
+  ubicacionNombre       String // Nombre de la ubicación
+  ubicacionDireccion    String // Dirección de la ubicación
+  responsableId           Int      // Clave foránea para Usuario responsable
+  responsable             Usuario  @relation(fields: [responsableId], references: [id]) // Relación con Usuario responsable
+  fecha                   DateTime // Fecha del historial
+  equipoId                Int      // Clave foránea para Equipo
+  equipo                  Equipo   @relation(fields: [equipoId], references: [id]) // Relación con Equipo
+
+  @@map("historial_propietarios") // Nombre de la tabla en la base de datos
 }
 
 model DocumentoLegal {

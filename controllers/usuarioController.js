@@ -5,11 +5,19 @@ const prisma = require('../src/prisma-client'); // Importa el cliente Prisma con
 
 exports.listar = async (req, res, next) => {
   try {
-    const usuarios = await prisma.usuario.findMany();
+    const usuarios = await prisma.usuario.findMany({
+      select: {
+        id: true,
+        nombre: true,
+        email: true,
+        rol: true,
+        estado: true,
+        firma: true
+      }
+    });
     res.status(200).json(usuarios);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err });
     next(err);
   }
 };
@@ -99,15 +107,16 @@ exports.actualizarfirma = async (req, res) => {
        
 
     // Verifica que el ID del usuario esté presente en la respuesta decodificada
-    if (!validationResponse.id) {
+    if (validationResponse.rol === "administrador") {
       return res.status(400).json({
-        error: 'El token no contiene un ID válido para el usuario.',
+        error: 'El token no contiene un ROL válido para el usuario.',
       });
     }
+    
 
     // Actualizar el campo firma del usuario
     const usuarioActualizado = await prisma.usuario.update({
-      where: { id: validationResponse.id }, // Cambia esto a "email" si usas email en su lugar
+      where: { email: req.body.email }, // Cambia esto a "email" si usas email en su lugar
       data: { firma: req.body.firma },
     });
 
