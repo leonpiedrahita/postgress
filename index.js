@@ -7,12 +7,12 @@ const PORT = process.env.PORT || 5000;
 const apiRouter = require('./src/routes'); // Importo el index donde están las rutas
 const cors = require("cors");
 
-/* app.use(cors()); */
-app.use(cors({
+app.use(cors());
+/* app.use(cors({
   origin: 'https://front3vuetify.onrender.com',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   credentials: true
-}));
+})); */
 // Middleware para parsear JSON y datos URL-encoded
 app.use(morgan("dev"));
 app.use(express.json());
