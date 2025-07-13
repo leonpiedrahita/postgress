@@ -15,6 +15,7 @@ router.patch("/actualizar/:id",auth.verificarAdminCal,equipoController.actualiza
 
 router.get("/buscar",auth.verificarUsuario,equipoController.buscar);
 router.get("/listaruno/:id",auth.verificarUsuario,equipoController.listaruno);
-router.post("/buscarequipos/",auth.verificarUsuario,equipoController.buscarequipos);
+router.post("/buscarequipos",auth.verificarUsuario,equipoController.buscarequipos);
+router.patch("/actualizarcronograma",auth.verificarUsuario,equipoController.actualizarcronograma)
 
 module.exports = router;

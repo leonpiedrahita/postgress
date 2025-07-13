@@ -75,6 +75,22 @@ router.post(
       });
     }
   );
+// Ruta para guardar archivo en S3 y registrar documento en equipo
+  router.post(
+    '/guardarsoporte',
+    upload.single('file'),
+    auth.verificarUsuario,
+    validarArchivo,
+    s3Controller.guardarsoporteservicio, 
+    reporteController.crearDocumentoSoporte,
+    (req, res) => {
+      // Responder una sola vez al finalizar todos los middlewares
+      res.status(201).json({
+        message: 'Documento guardado y asociado al equipo',
+        
+      });
+    }
+  );
 
 // Buscar objetos en S3
 router.get('/buscar',auth.verificarUsuario, s3Controller.buscar);

@@ -66,6 +66,33 @@ const guardardocumentoequipo = async (req, res, next) => {
   }
 };
 
+const guardarsoporteservicio = async (req, res, next) => {
+  try {
+    const ahora = Date.now();
+    const serieequipo = (JSON.parse(req.body.serie));
+    const nombredocumento = JSON.parse(req.body.nombredocumento) ;
+    if (!req.file) {
+      return res.status(400).json({ error: "No se ha recibido ningún archivo." });
+    }
+
+    const uploadParams = {
+      Bucket: process.env.NOMBRE_BUCKET,
+      Key: `${serieequipo}-${nombredocumento}-${ahora}-${req.file.originalname}`,
+      Body: req.file.buffer,
+    };
+
+    await s3.send(new PutObjectCommand(uploadParams));
+    
+    // Pasar la llave al siguiente middleware
+    res.locals.llave = uploadParams.Key;
+
+    // Continuar con el siguiente middleware
+    next();
+
+  } catch (err) {
+    res.status(422).json({ error: err.message });
+  }
+};
 // ✅ Descargar archivo desde S3
 const buscar = async (req, res) => {
   try {
@@ -131,4 +158,4 @@ const buscarurl = async (req, res) => {
   }
 };
 
-module.exports = { guardarreporte,guardardocumentoequipo, buscar, buscarurl };
+module.exports = { guardarreporte,guardardocumentoequipo,guardarsoporteservicio, buscar, buscarurl };

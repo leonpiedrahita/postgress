@@ -142,3 +142,23 @@ exports.actualizar = async (req, res) => {
     });
   }
 };
+exports.crearDocumentoSoporte = async (req, res) => {
+  try {
+    const nombredocumento = JSON.parse(req.body.nombredocumento);
+    const nuevoDocumento = await prisma.documentoSoporte.create({
+      data: {
+        nombreDocumento: nombredocumento,
+        llaveDocumento: res.locals.llave,
+        fecha: new Date(),
+        historialServicio: {
+          connect: { id: parseInt(req.body.id_servicio) }
+        }
+      }
+    });
+
+    res.status(201).json(nuevoDocumento);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Error al guardar el documento soporte" });
+  }
+};

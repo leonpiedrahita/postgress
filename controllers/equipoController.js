@@ -8,7 +8,7 @@ exports.listar = async (req, res) => {
       include: {
         propietario: true, // Incluye información del propietario
         cliente: true, // Incluye información del cliente
-        /* proveedor: true, // Incluye información del proveedor */
+        proveedor: true, // Incluye información del proveedor 
         referencia: true, // Incluye información de la referencia
         historialDeServicios: true, // Incluye el historial de servicios
         documentosLegales: true, // Incluye documentos legales
@@ -16,8 +16,9 @@ exports.listar = async (req, res) => {
           include: {
             cliente: true, // Incluye información del cliente en el historial
             propietario: true, // Incluye información del propietario en el historial
-            /* proveedor: true, // Incluye información del proveedor en el historial */
+            proveedor: true, // Incluye información del proveedor en el historial 
             /* responsable: true, // Incluye información del responsable en el historial */
+             // Incluye información del tipo de contrato en el historial
           },
         },
 
@@ -55,7 +56,7 @@ exports.registrar = async (req, res) => {
         estado: 'Activo',
         ubicacionNombre: req.body.nuevoequipo.ubicacion.nombre,
         ubicacionDireccion: req.body.nuevoequipo.ubicacion.direccion,
-    
+        proveedor: { connect: { id: req.body.nuevoequipo.proveedor.id } }, // Conecta al proveedor por ID
         referencia: { connect: { id: req.body.nuevoequipo.id } },
         propietario: { connect: { id: req.body.nuevoequipo.propietario.id } },
         cliente: { connect: { id: req.body.nuevoequipo.cliente.id } },
@@ -68,9 +69,11 @@ exports.registrar = async (req, res) => {
       data: {
         clienteId: req.body.nuevoequipo.cliente.id,
         propietarioId: req.body.nuevoequipo.propietario.id,
+        proveedorId: req.body.nuevoequipo.proveedor.id,
         ubicacionNombre: req.body.nuevoequipo.ubicacion.nombre,
         ubicacionDireccion: req.body.nuevoequipo.ubicacion.direccion,
         responsableId: validationResponse.id,
+        tipoDeContrato: req.body.nuevoequipo.tipoDeContrato,
         fecha: new Date(),
         equipoId: nuevoEquipo.id,
       },
@@ -99,11 +102,12 @@ exports.actualizar = async (req, res) => {
       cliente,
       propietario,
       placaDeInventario,
-      tipoDeContrato
+      tipoDeContrato,
+      proveedor
     } = req.body;
 
     // Verifica que todos los campos obligatorios estén presentes
-    if (!placaDeInventario || !tipoDeContrato || !ubicacionNombre || !ubicacionDireccion || !cliente || !propietario) {
+    if (!placaDeInventario || !tipoDeContrato || !ubicacionNombre || !ubicacionDireccion || !cliente || !propietario||!proveedor) {
       return res.status(400).json({ error: "Todos los campos son obligatorios" });
     }
 
@@ -130,6 +134,7 @@ exports.actualizar = async (req, res) => {
         tipoDeContrato, // Actualiza el tipo de contrato
         cliente: { connect: { id: cliente.id } }, // Conecta al cliente por ID
         propietario: { connect: { id: propietario.id } }, // Conecta al propietario por ID
+        proveedor: { connect: { id: proveedor.id } }, // Conecta al proveedor por ID
         
       },
     });
@@ -137,9 +142,11 @@ exports.actualizar = async (req, res) => {
 
       clienteId: req.body.cliente.id,
         propietarioId: req.body.propietario.id,
+        proveedorId: req.body.proveedor.id,
         ubicacionNombre: req.body.ubicacionNombre,
         ubicacionDireccion: req.body.ubicacionDireccion,
         responsableId: validationResponse.id,
+        tipoDeContrato, // Actualiza el tipo de contrato
         fecha: new Date(),
         equipoId: id,
 
@@ -257,17 +264,26 @@ exports.listaruno = async (req, res) => {
     const equipo = await prisma.equipo.findUnique({
       where: { id },
       include: {
-        referencia: true, // Incluye la información de la relación RefEquipo
-        propietario: true, // Incluye la información del propietario (Cliente)
-        /* proveedor: true, // Incluye la información del proveedor */
-        cliente: true, // Incluye la información del cliente (Cliente)
-        historialDeServicios: true, // Incluye el historial de servicios
-        documentosLegales: true, // Incluye los documentos legales
+        propietario: true, // Incluye información del propietario
+        cliente: true, // Incluye información del cliente
+        proveedor: true, // Incluye información del proveedor 
+        referencia: true, // Incluye información de la referencia
+        historialDeServicios: {
+          include: {
+            responsable: true, // Incluye información del responsable en el historial de servicios
+            reporte: true, // Incluye la identificación del reporte en el historial de servicios
+            equipo  : true, // Incluye información del equipo en el historial de servicios
+            documentosSoporte: true
+              
+            }, // Incluye los documentos de soporte en el historial de servicios
+          
+        }, // Incluye el historial de servicios
+        documentosLegales: true, // Incluye documentos legales
         historialPropietarios: {
           include: {
             cliente: true, // Incluye información del cliente en el historial
             propietario: true, // Incluye información del propietario en el historial
-            /* proveedor: true, // Incluye información del proveedor en el historial */
+            proveedor: true, // Incluye información del proveedor en el historial 
             /* responsable: true, // Incluye información del responsable en el historial */
           },
         },
@@ -318,10 +334,27 @@ exports.buscarequipos = async (req, res) => {
       include: {
         propietario: true, // Incluye información del propietario
         cliente: true, // Incluye información del cliente
-        /* proveedor: true, // Incluye información del proveedor */
+        proveedor: true, // Incluye información del proveedor 
         referencia: true, // Incluye información de la referencia
-        historialDeServicios: true, // Incluye el historial de servicios
+        historialDeServicios: {
+          include: {
+            responsable: true, // Incluye información del responsable en el historial de servicios
+            reporte: true, // Incluye la identificación del reporte en el historial de servicios
+            equipo  : true, // Incluye información del equipo en el historial de servicios
+            documentosSoporte: true
+              
+            }, // Incluye los documentos de soporte en el historial de servicios
+          
+        }, // Incluye el historial de servicios
         documentosLegales: true, // Incluye documentos legales
+        historialPropietarios: {
+          include: {
+            cliente: true, // Incluye información del cliente en el historial
+            propietario: true, // Incluye información del propietario en el historial
+            proveedor: true, // Incluye información del proveedor en el historial 
+            /* responsable: true, // Incluye información del responsable en el historial */
+          },
+        },
       },
     });
 
@@ -331,5 +364,22 @@ exports.buscarequipos = async (req, res) => {
     // Manejo de errores
     console.error('Error al buscar equipos:', err);
     res.status(500).json({ error: 'Ocurrió un error al buscar los equipos.', detalles: err.message });
+  }
+};
+// Registrar un reporte externo
+exports.actualizarcronograma = async (req, res) => {
+  const { id_equipo, fechaDePreventivo } = req.body;
+console.log('id_equipo', id_equipo);
+console.log('fechaDePreventivo', fechaDePreventivo);
+  try {
+    const equipoActualizado = await prisma.equipo.update({
+      where: { id: parseInt(id_equipo) },
+      data: { fechaDePreventivo: new Date(fechaDePreventivo) },
+    });
+
+    res.status(200).json({ message: "Fecha de preventivo actualizada", equipo: equipoActualizado });
+  } catch (error) {
+    console.error('Error actualizando fecha de cronograma equipo:', error);
+    res.status(500).json({ error: 'Error actualizando fecha de cronograma equipo' });
   }
 };
