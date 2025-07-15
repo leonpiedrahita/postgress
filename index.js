@@ -10,7 +10,7 @@ const cors = require("cors");
 /* app.use(cors()); */
 app.use(cors({
   origin: 'https://front3vuetify.onrender.com',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS','PATCH'],
+  methods: ['GET', 'PATH','POST', 'PUT', 'DELETE', 'OPTIONS'],
   credentials: true
 }));
 // Middleware para parsear JSON y datos URL-encoded
