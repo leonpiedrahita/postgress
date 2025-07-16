@@ -9,7 +9,7 @@ const cors = require("cors");
 
 /* app.use(cors()); */
 app.use(cors({
-  origin: 'https://front3vuetify.onrender.com',
+  origin: 'https://gomaint.vercel.app/',
   methods: ['GET', 'PATH','POST', 'PUT', 'DELETE', 'OPTIONS'],
   credentials: true
 }));
