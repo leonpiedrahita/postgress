@@ -9,7 +9,7 @@ const cors = require("cors");
 
 /* app.use(cors()); */
 app.use(cors({
-  origin: 'https://gomaint.vercel.app/',
+  origin: 'https://gomaint.vercel.app',
   methods: ['GET', 'PATH','POST', 'PUT', 'DELETE', 'OPTIONS'],
   credentials: true
 }));
