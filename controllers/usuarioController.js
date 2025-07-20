@@ -61,21 +61,27 @@ exports.ingresar = async (req, res, next) => {
       return res.status(401).json({ message: 'Falló la autenticación' });
     }
 
+    // Verificar si el usuario está inactivo
+    if (usuario.estado === 0) {
+      return res.status(403).json({ message: 'Usuario inactivo. Contacte al administrador.' });
+    }
+
     const isMatch = await bcrypt.compare(req.body.password, usuario.password);
 
     if (!isMatch) {
       return res.status(401).json({ message: 'Falló la autenticación' });
     }
 
-    // Generamos el token
-    const token = tokenServices.encode(usuario); // Esta función genera el token
+    // Generar el token
+    const token = tokenServices.encode(usuario);
+
     res.status(200).json({
       auth: true,
       tokenReturn: token,
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err });
+    res.status(500).json({ error: err.message });
     next(err);
   }
 };
@@ -106,12 +112,7 @@ exports.actualizarfirma = async (req, res) => {
     const validationResponse = await tokenServices.decode(req.headers.token);
        
 
-    // Verifica que el ID del usuario esté presente en la respuesta decodificada
-    if (validationResponse.rol === "administrador") {
-      return res.status(400).json({
-        error: 'El token no contiene un ROL válido para el usuario.',
-      });
-    }
+   
     
 
     // Actualizar el campo firma del usuario

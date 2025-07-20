@@ -19,6 +19,6 @@ router.patch("/actualizar/:id",auth.verificarAdmin,usuarioController.actualizar)
 //.com/api/firma/registrar
 router.patch("/actualizarfirma",auth.verificarAdmin,usuarioController.actualizarfirma);
 //.com/api/firma/buscar
- router.get("/buscarfirma" ,auth.verificarAdmin,usuarioController.buscarfirma); 
+ router.get("/buscarfirma" ,auth.verificarUsuario,usuarioController.buscarfirma); 
 
 module.exports = router;
