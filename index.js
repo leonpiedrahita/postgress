@@ -8,9 +8,22 @@ const apiRouter = require('./src/routes'); // Importo el index donde están las 
 const cors = require("cors");
 
 /* app.use(cors()); */
-app.use(cors({
+/* app.use(cors({
   origin: 'https://gomaint.vercel.app',
   methods: ['GET', 'PATCH','POST', 'PUT', 'DELETE', 'OPTIONS'],
+  credentials: true
+})); */
+const allowedOrigins = ['https://gomaint.vercel.app', 'http://localhost:3000'];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('No permitido por CORS'));
+    }
+  },
+  methods: ['GET', 'PATCH', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   credentials: true
 }));
 // Middleware para parsear JSON y datos URL-encoded
