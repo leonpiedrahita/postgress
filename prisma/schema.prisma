@@ -74,7 +74,7 @@ model Cliente {
   nombre                          String
   nit                             String                 @unique // Campo único para el NIT
   sede                            Json? // Array convertido a tipo Json opcional
-  contactoprincipal               Json // Array convertido a tipo Json requerido
+  contactoprincipal               Json? // Array convertido a tipo Json requerido
   equiposComoPropietario          Equipo[]               @relation("ClientePropietario") // Relación inversa para equipos donde el cliente es propietario
   equiposComoCliente              Equipo[]               @relation("Cliente") // Relación inversa para equipos donde el cliente es cliente
   equiposComoProveedor            Equipo[]               @relation("Proveedor") // Relación inversa para equipos donde el cliente es cliente 
