@@ -7,13 +7,12 @@ const PORT = process.env.PORT || 5000;
 const apiRouter = require('./src/routes'); // Importo el index donde están las rutas
 const cors = require("cors");
 
-/* app.use(cors()); */
-/* app.use(cors({
-  origin: 'https://gomaint.vercel.app',
-  methods: ['GET', 'PATCH','POST', 'PUT', 'DELETE', 'OPTIONS'],
-  credentials: true
-})); */
-const allowedOrigins = ['https://gomaint.vercel.app', 'http://localhost:3000'];
+const allowedOrigins = [
+  'https://gomaint.vercel.app',
+  'http://localhost:3000',
+  'https://gomaint.com.co',        // Dominio principal en producción
+  'https://www.gomaint.com.co'     // También es común agregar el subdominio www
+];
 
 app.use(cors({
   origin: function (origin, callback) {
