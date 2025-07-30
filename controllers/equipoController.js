@@ -74,7 +74,7 @@ exports.registrar = async (req, res) => {
         ubicacionDireccion: req.body.nuevoequipo.ubicacion.direccion,
         responsableId: validationResponse.id,
         tipoDeContrato: req.body.nuevoequipo.tipoDeContrato,
-        fecha: new Date(),
+        fecha: new Date(req.body.nuevoequipo.fechaDeMovimiento),
         equipoId: nuevoEquipo.id,
       },
     });

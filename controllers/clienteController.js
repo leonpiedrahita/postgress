@@ -26,7 +26,7 @@ exports.registrar = async (req, res) => {
       data: {
         nombre: req.body.nombre,
         nit: req.body.nit,
-        contactoprincipal: req.body.contactoprincipal, // Json
+        /* contactoprincipal: req.body.contactoprincipal, // Json */
         sede: [],
       },
     });
