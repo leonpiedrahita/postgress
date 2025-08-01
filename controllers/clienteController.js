@@ -2,122 +2,197 @@ const prisma = require('../src/prisma-client'); // Importa el cliente Prisma con
 
 exports.listar = async (req, res) => {
   try {
-    const clientes = await prisma.cliente.findMany();
+    const clientes = await prisma.cliente.findMany({
+      include: {
+        sedes: {
+          where: {
+            activa: true,
+          },
+        },
+        sedePrincipal: true,
+      },
+    });
+
     res.status(200).json(clientes);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err });
+    res.status(500).json({ error: err.message || err });
   }
 };
 
 exports.registrar = async (req, res) => {
   try {
+    const { nombre, nit, sedePrincipal } = req.body;
+
     // Verifica si el cliente ya existe con el mismo NIT
     const existingCliente = await prisma.cliente.findUnique({
-      where: { nit: req.body.nit },
+      where: { nit },
     });
 
     if (existingCliente) {
       return res.status(409).json({ message: 'Cliente existente' });
     }
 
-    // Crea un nuevo cliente
+    // Validación básica de sedePrincipal
+    if (!sedePrincipal || !sedePrincipal.ciudad || !sedePrincipal.direccion) {
+      return res.status(400).json({ message: 'Datos incompletos de la sede principal' });
+    }
+
+    // Crea el cliente y su sede principal asociada
     const cliente = await prisma.cliente.create({
       data: {
-        nombre: req.body.nombre,
-        nit: req.body.nit,
-        /* contactoprincipal: req.body.contactoprincipal, // Json */
-        sede: [],
+        nombre,
+        nit,
+        sedes: {
+          create: [
+            {
+              ciudad: sedePrincipal.ciudad,
+              direccion: sedePrincipal.direccion,
+              activa: sedePrincipal.activa ?? true,
+            },
+          ],
+        },
+      },
+      include: {
+        sedes: true,
       },
     });
 
-    res.status(201).json({ message: 'Cliente creado', cliente });
+    // Establece la sede recién creada como sede principal
+    const sedeCreada = cliente.sedes[0];
+
+    const clienteActualizado = await prisma.cliente.update({
+      where: { id: cliente.id },
+      data: {
+        sedePrincipalId: sedeCreada.id,
+      },
+      include: {
+        sedePrincipal: true,
+        sedes: true,
+      },
+    });
+
+    res.status(201).json({ message: 'Cliente creado', cliente: clienteActualizado });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err });
+    res.status(500).json({ error: err.message || err });
   }
 };
 
 exports.actualizar = async (req, res) => {
-  
   try {
     const id = parseInt(req.params.id);
+    const { nombre, nit, sedePrincipal } = req.body;
 
+    // Validación existencia del cliente
+    const clienteExistente = await prisma.cliente.findUnique({
+      where: { id },
+    });
+
+    if (!clienteExistente) {
+      return res.status(404).json({ message: 'Cliente no encontrado' });
+    }
+
+    // Validar NIT duplicado en otro cliente
+    if (nit && nit !== clienteExistente.nit) {
+      const clienteConNit = await prisma.cliente.findUnique({
+        where: { nit },
+      });
+
+      if (clienteConNit && clienteConNit.id !== id) {
+        return res.status(409).json({ message: 'El NIT ya está en uso por otro cliente' });
+      }
+    }
+
+    // Validar sedePrincipal
+    if (!sedePrincipal || !sedePrincipal.ciudad || !sedePrincipal.direccion) {
+      return res.status(400).json({ message: 'Datos incompletos de la sede principal' });
+    }
+
+    // Crear nueva sede
+    const nuevaSede = await prisma.sede.create({
+      data: {
+        ciudad: sedePrincipal.ciudad,
+        direccion: sedePrincipal.direccion,
+        activa: sedePrincipal.activa ?? true,
+        clienteId: id,
+      },
+    });
+
+    // Actualizar cliente con nuevos datos y sedePrincipalId
     const clienteActualizado = await prisma.cliente.update({
       where: { id },
-      data: req.body, // Actualiza los campos dinámicamente
+      data: {
+        nombre,
+        nit,
+        sedePrincipalId: nuevaSede.id,
+      },
+      include: {
+        sedePrincipal: true,
+        sedes: {
+          where: { activa: true }
+        }
+      }
     });
 
     res.status(200).json({ message: 'Cliente actualizado', cliente: clienteActualizado });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err });
+    res.status(500).json({ error: err.message || err });
   }
 };
-
 exports.agregarsede = async (req, res) => {
   try {
-    const id = parseInt(req.params.id);
+    const clienteId = parseInt(req.params.id);
 
-    // Obtener el cliente actual para leer el campo `sede`
+    // Verifica si el cliente existe
     const cliente = await prisma.cliente.findUnique({
-      where: { id },
+      where: { id: clienteId },
     });
 
     if (!cliente) {
       return res.status(404).json({ message: 'Cliente no encontrado' });
     }
 
-    // Si `sede` es null o undefined, inicializarlo como un array vacío
-    const sedesActualizadas = cliente.sede ? [...cliente.sede] : [];
-
-    // Agregar la nueva sede al array
-    sedesActualizadas.push({
-      nombre: req.body.nombre,
-      direccion: req.body.direccion,
-      idcliente: id,
-    });
-
-    // Actualizar el campo `sede` con el nuevo array
-    await prisma.cliente.update({
-      where: { id },
+    // Crear nueva sede
+    const nuevaSede = await prisma.sede.create({
       data: {
-        sede: sedesActualizadas,
+        ciudad: req.body.ciudad,
+        direccion: req.body.direccion,
+        activa: req.body.activa ?? true,
+        clienteId: clienteId,
       },
     });
 
-    res.status(200).json({ message: 'Sede agregada', sedes: sedesActualizadas });
+    res.status(201).json({ message: 'Sede agregada', sede: nuevaSede });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err });
+    res.status(500).json({ error: err.message || err });
   }
 };
-
 exports.eliminarsede = async (req, res) => {
   try {
-    const idcliente = parseInt(req.body.idcliente);
+    const sedeId = parseInt(req.body.sedeId);
 
-    // Filtra la sede a eliminar del campo `sede`
-    const cliente = await prisma.cliente.findUnique({
-      where: { id: idcliente },
+    // Verifica si la sede existe
+    const sede = await prisma.sede.findUnique({
+      where: { id: sedeId },
     });
 
-    if (!cliente || !cliente.sede) {
-      return res.status(404).json({ message: 'Cliente o sede no encontrada' });
+    if (!sede) {
+      return res.status(404).json({ message: 'Sede no encontrada' });
     }
 
-    const sedesActualizadas = cliente.sede.filter(
-      (sede) => sede.nombre !== req.body.nombre
-    );
-
-    await prisma.cliente.update({
-      where: { id: idcliente },
-      data: { sede: sedesActualizadas },
+    // Marcar como inactiva
+    const sedeActualizada = await prisma.sede.update({
+      where: { id: sedeId },
+      data: { activa: false },
     });
 
-    res.status(200).json({ message: 'Sede eliminada', sedes: sedesActualizadas });
+    res.status(200).json({ message: 'Sede desactivada', sede: sedeActualizada });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err });
+    res.status(500).json({ error: err.message || err });
   }
 };
+

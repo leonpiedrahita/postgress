@@ -70,24 +70,40 @@ model Usuario {
 }
 
 model Cliente {
-  id                              Int                    @id @default(autoincrement()) // Clave primaria
+  id                              Int                    @id @default(autoincrement())
   nombre                          String
-  nit                             String                 @unique // Campo único para el NIT
-  sede                            Json? // Array convertido a tipo Json opcional
-  contactoprincipal               Json? // Array convertido a tipo Json requerido
-  equiposComoPropietario          Equipo[]               @relation("ClientePropietario") // Relación inversa para equipos donde el cliente es propietario
-  equiposComoCliente              Equipo[]               @relation("Cliente") // Relación inversa para equipos donde el cliente es cliente
-  equiposComoProveedor            Equipo[]               @relation("Proveedor") // Relación inversa para equipos donde el cliente es cliente 
-  equiposComoPropietarioHistorial HistorialPropietario[] @relation("ClientePropietarioHistorial") // Relación inversa para equipos donde el cliente es propietario
-  equiposComoClienteHistorial     HistorialPropietario[] @relation("ClienteHistorial") // Relación inversa para equipos donde el cliente es cliente
-  equiposComoProveedorHistorial   HistorialPropietario[] @relation("ProveedorHistorial") // Relación inversa para equipos donde el cliente es cliente
+  nit                             String                 @unique
+  contactoprincipal               Json?
+  equiposComoPropietario          Equipo[]               @relation("ClientePropietario")
+  equiposComoCliente              Equipo[]               @relation("Cliente")
+  equiposComoProveedor            Equipo[]               @relation("Proveedor")
+  equiposComoPropietarioHistorial HistorialPropietario[] @relation("ClientePropietarioHistorial")
+  equiposComoClienteHistorial     HistorialPropietario[] @relation("ClienteHistorial")
+  equiposComoProveedorHistorial   HistorialPropietario[] @relation("ProveedorHistorial")
 
-  createdAt DateTime @default(now()) // Timestamp automático
-  updatedAt DateTime @updatedAt // Se actualiza automáticamente
+  sedes                           Sede[]                 // Relación uno a muchos
 
-  @@map("clientes") // Mapeamos el modelo al nombre original de la tabla/colección
+  sedePrincipalId                 Int?                   // FK opcional (puede no tener sede principal aún)
+  sedePrincipal                   Sede?                  @relation("SedePrincipal", fields: [sedePrincipalId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("clientes")
 }
+model Sede {
+  id        Int      @id @default(autoincrement())
+  ciudad    String
+  direccion String
+  activa    Boolean  @default(true)
 
+  clienteId Int
+  cliente   Cliente  @relation(fields: [clienteId], references: [id])
+
+  clientesComoPrincipal Cliente[] @relation("SedePrincipal") // Relación inversa
+
+  @@map("sedes")
+}
 model RefEquipo {
   id                        Int              @id @default(autoincrement()) // Clave primaria
   nombre                    String           @unique // Nombre del equipo

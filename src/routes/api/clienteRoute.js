@@ -12,7 +12,7 @@ router.post("/registrar",auth.verificarAdminCot, clienteController.registrar);
 //.com/api/cliente/actualizar/id del elemento de la colección que quiero modificar
 router.patch("/actualizar/:id",auth.verificarAdminCot, clienteController.actualizar);
 //.com/api/cliente/agregarsede/:id
-router.patch("/agregarsede/:id",auth.verificarAdminCot, clienteController.agregarsede);
+router.post("/agregarsede/:id",auth.verificarAdminCot, clienteController.agregarsede);
 //.com/api/cliente/agregarsede/:id
 router.patch("/eliminarsede/",auth.verificarAdminCot, clienteController.eliminarsede,);
 
