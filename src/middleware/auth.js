@@ -1,130 +1,41 @@
 const tokenServices = require('../../services/token');
+const { getPrismaWithUser } = require('../../src/prisma-client'); // importa la función que extiende Prisma
+
+const verificarRol = (rolesPermitidos) => {
+  return async (req, res, next) => {
+    const token = req.headers.token;
+
+    if (!token) {
+      return res.status(404).send({ message: 'Token no encontrado' });
+    }
+
+    const validationResponse = await tokenServices.decode(token);
+
+    if (validationResponse === 'token vencido') {
+      return res.status(403).send({ message: 'Token vencido' });
+    }
+
+    if (!rolesPermitidos.includes(validationResponse.rol)) {
+      return res.status(403).send({ message: 'No autorizado' });
+    }
+
+    // Inyectar Prisma con userId para logs
+    req.prisma = getPrismaWithUser(validationResponse.nombre);
+
+    // Inyectar datos del usuario si lo necesitas más adelante
+    req.usuario = {
+      nombre: validationResponse.nombre
+    };
+
+    next();
+  };
+};
 
 module.exports = {
-    verificarAdmin:async (req, res, next) =>{
-        if(!req.headers.token){
-            return res.status(404).send({
-                message: 'Token no encontrado'
-            });
-        }else{
-            const validationResponse = await tokenServices.decode(req.headers.token);
-            if(validationResponse === 'token vencido'){
-                return res.status(403).send({
-                    message: 'Token vencido'
-                })
-            }
-            else if(['administrador'].includes(validationResponse.rol)){
-                next();//si es usuario es administrador, bien pueda
-            }else{
-                return res.status(403).send({
-                    message: 'No autorizado'
-                })
-            }
-        }
-    },
-    verificarAdminCot:async (req, res, next) =>{
-        if(!req.headers.token){
-            return res.status(404).send({
-                message: 'Token no encontrado'
-            });
-        }else{
-            const validationResponse = await tokenServices.decode(req.headers.token);
-            if(validationResponse === 'token vencido'){
-                return res.status(403).send({
-                    message: 'Token vencido'
-                })
-            }
-            else if(['administrador', 'cotizaciones'].includes(validationResponse.rol)){
-                next();//si es usuario es administrador, bien pueda
-            }else{
-                return res.status(403).send({
-                    message: 'No autorizado'
-                })
-            }
-        }
-    },
-    verificarAdminCal:async (req, res, next) =>{
-        if(!req.headers.token){
-            return res.status(404).send({
-                message: 'Token no encontrado'
-            });
-        }else{
-            const validationResponse = await tokenServices.decode(req.headers.token);
-            if(validationResponse === 'token vencido'){
-                return res.status(403).send({
-                    message: 'Token vencido'
-                })
-            }
-            else if(['administrador', 'calidad'].includes(validationResponse.rol)){
-                next();//si es usuario es administrador, bien pueda
-            }else{
-                return res.status(403).send({
-                    message: 'No autorizado'
-                })
-            }
-        }
-    },
-    verificarAdminSopCom:async (req, res, next) =>{
-        if(!req.headers.token){
-            return res.status(404).send({
-                message: 'Token no encontrado'
-            });
-        }else{
-            const validationResponse = await tokenServices.decode(req.headers.token);
-            if(validationResponse === 'token vencido'){
-                return res.status(403).send({
-                    message: 'Token vencido'
-                })
-            }
-            else if(['administrador', 'soporte','comercial'].includes(validationResponse.rol)){
-                next();//si es usuario es administrador, bien pueda
-            }else{
-                return res.status(403).send({
-                    message: 'No autorizado'
-                })
-            }
-        }
-    },
-    verificarAdminCalCot:async (req, res, next) =>{
-        if(!req.headers.token){
-            return res.status(404).send({
-                message: 'Token no encontrado'
-            });
-        }else{
-            const validationResponse = await tokenServices.decode(req.headers.token);
-            if(validationResponse === 'token vencido'){
-                return res.status(403).send({
-                    message: 'Token vencido'
-                })
-            }
-            else if(['administrador', 'cotizaciones','calidad'].includes(validationResponse.rol)){
-                next();//si es usuario es administrador, bien pueda
-            }else{
-                return res.status(403).send({
-                    message: 'No autorizado'
-                })
-            }
-        }
-    },
-    verificarUsuario:async (req, res, next) =>{
-        if(!req.headers.token){
-            return res.status(404).send({
-                message: 'Token no encontrado'
-            });
-        }else{
-            const validationResponse = await tokenServices.decode(req.headers.token);
-            if(validationResponse === 'token vencido'){
-                return res.status(403).send({
-                    message: 'Token vencido'
-                })
-            }
-            else if(['administrador', 'cotizaciones','calidad','soporte','comercial'].includes(validationResponse.rol)){
-                next();//si es usuario es administrador, bien pueda
-            }else{
-                return res.status(403).send({
-                    message: 'No autorizado'
-                })
-            }
-        }
-    },
-}
+  verificarAdmin: verificarRol(['administrador']),
+  verificarAdminCot: verificarRol(['administrador', 'cotizaciones']),
+  verificarAdminCal: verificarRol(['administrador', 'calidad']),
+  verificarAdminSopCom: verificarRol(['administrador', 'soporte', 'comercial']),
+  verificarAdminCalCot: verificarRol(['administrador', 'cotizaciones', 'calidad']),
+  verificarUsuario: verificarRol(['administrador', 'cotizaciones', 'calidad', 'soporte', 'comercial']),
+};

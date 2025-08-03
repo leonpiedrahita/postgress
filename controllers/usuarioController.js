@@ -1,10 +1,19 @@
-
 const bcrypt = require("bcryptjs");
 const tokenServices = require('../services/token');
-const prisma = require('../src/prisma-client'); // Importa el cliente Prisma con la extensión de auditoría
+const { getPrismaWithUser } = require('../src/prisma-client');
+const { PrismaClient } = require('@prisma/client');
+
+const prismaBase = new PrismaClient(); // Cliente sin extensiones
+
+const getUserPrisma = async (req) => {
+  const token = req.headers.token;
+  const decoded = await tokenServices.decode(token);
+  return getPrismaWithUser(decoded.nombre);
+};
 
 exports.listar = async (req, res, next) => {
   try {
+    const prisma = await getUserPrisma(req);
     const usuarios = await prisma.usuario.findMany({
       select: {
         id: true,
@@ -53,7 +62,7 @@ exports.registrar = async (req, res, next) => {
 
 exports.ingresar = async (req, res, next) => {
   try {
-    const usuario = await prisma.usuario.findUnique({
+    const usuario = await prismaBase.usuario.findUnique({
       where: { email: req.body.email },
     });
 
@@ -61,7 +70,6 @@ exports.ingresar = async (req, res, next) => {
       return res.status(401).json({ message: 'Falló la autenticación' });
     }
 
-    // Verificar si el usuario está inactivo
     if (usuario.estado === 0) {
       return res.status(403).json({ message: 'Usuario inactivo. Contacte al administrador.' });
     }
@@ -72,7 +80,6 @@ exports.ingresar = async (req, res, next) => {
       return res.status(401).json({ message: 'Falló la autenticación' });
     }
 
-    // Generar el token
     const token = tokenServices.encode(usuario);
 
     res.status(200).json({
@@ -88,6 +95,7 @@ exports.ingresar = async (req, res, next) => {
 
 exports.actualizar = async (req, res, next) => {
   try {
+    const prisma = await getUserPrisma(req);
     const usuario = await prisma.usuario.update({
       where: { id: parseInt(req.params.id) },
       data: {
@@ -108,20 +116,12 @@ exports.actualizar = async (req, res, next) => {
 
 exports.actualizarfirma = async (req, res) => {
   try {
-    // Decodificar el token para obtener el ID o email del usuario
-    const validationResponse = await tokenServices.decode(req.headers.token);
-       
-
-   
-    
-
-    // Actualizar el campo firma del usuario
+    const prisma = await getUserPrisma(req);
     const usuarioActualizado = await prisma.usuario.update({
-      where: { email: req.body.email }, // Cambia esto a "email" si usas email en su lugar
+      where: { email: req.body.email },
       data: { firma: req.body.firma },
     });
 
-    // Responder con la información del usuario actualizado
     res.status(200).json({
       message: 'Firma actualizada exitosamente',
       usuario: usuarioActualizado,
@@ -133,26 +133,24 @@ exports.actualizarfirma = async (req, res) => {
     });
   }
 };
+
 exports.buscarfirma = async (req, res) => {
   try {
-    // Decodificar el token para obtener el ID del usuario
-    const validationResponse = await tokenServices.decode(req.headers.token);
-    // Verificar si el ID del usuario está presente
-    if (!validationResponse.id) {
+    const prisma = await getUserPrisma(req);
+    const decoded = await tokenServices.decode(req.headers.token);
+
+    if (!decoded.id) {
       return res.status(400).json({
         error: 'El token no contiene un ID válido para el usuario.',
       });
     }
 
-    // Buscar la firma del usuario en la base de datos
     const usuario = await prisma.usuario.findUnique({
-      where: { id: validationResponse.id },
-      select: { firma: true }, // Solo seleccionamos el campo "firma"
+      where: { id: decoded.id },
+      select: { firma: true },
     });
 
-    // Verificar si el usuario tiene una firma registrada
-    if (usuario && usuario.firma) {
-      /* console.log('Firma encontrada:', usuario.firma); */
+    if (usuario?.firma) {
       return res.status(200).json({ firma: usuario.firma });
     } else {
       return res.status(404).json({

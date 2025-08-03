@@ -1,10 +1,10 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+
 
 /**
  * Listar todos los ingresos
  */
 exports.listarTodosLosIngresos = async (req, res) => {
+  const prisma = req.prisma; // Obtener el cliente Prisma del request
   try {
     const ingresos = await prisma.ingreso.findMany({
       include: {
@@ -27,6 +27,7 @@ exports.listarTodosLosIngresos = async (req, res) => {
  * Listar ingresos por estado
  */
 exports.listarIngresosPorEstado = async (req, res) => {
+  const prisma = req.prisma; // Obtener el cliente Prisma del request
   try {
     const { estado } = req.params; // Estado enviado como parámetro
     const ingresos = await prisma.ingreso.findMany({
@@ -47,6 +48,7 @@ exports.listarIngresosPorEstado = async (req, res) => {
  * Listar ingresos por serie de equipo
  */
 exports.listarIngresosPorSerieDeEquipo = async (req, res) => {
+  const prisma = req.prisma; // Obtener el cliente Prisma del request
   try {
     const { serie } = req.params; // Serie enviada como parámetro
     const ingresos = await prisma.ingreso.findMany({
@@ -71,6 +73,7 @@ exports.listarIngresosPorSerieDeEquipo = async (req, res) => {
  * Listar ingresos por nombre de cliente
  */
 exports.listarIngresosPorNombreDeCliente = async (req, res) => {
+  const prisma = req.prisma; // Obtener el cliente Prisma del request
   try {
     const { nombreCliente } = req.params; // Nombre del cliente enviado como parámetro
     const ingresos = await prisma.ingreso.findMany({
@@ -103,6 +106,7 @@ exports.listarIngresosPorNombreDeCliente = async (req, res) => {
  * Obtener un ingreso por ID junto con el equipo y las etapas relacionadas
  */
 exports.obtenerIngresoPorId = async (req, res) => {
+  const prisma = req.prisma; // Obtener el cliente Prisma del request
     try {
       const { ingresoId } = req.params; // Obtener el ID del ingreso desde los parámetros
   
@@ -148,6 +152,7 @@ exports.obtenerIngresoPorId = async (req, res) => {
  * Registrar un nuevo ingreso
  */
 exports.registrarIngreso = async (req, res) => {
+  const prisma = req.prisma; // Obtener el cliente Prisma del request
     try {
       const { equipo, etapa } = req.body;
   
@@ -222,6 +227,7 @@ exports.registrarIngreso = async (req, res) => {
  * Agregar una nueva etapa a un ingreso con estado "Abierta" y actualizar la etapa más reciente.
  */
 exports.agregarEtapa = async (req, res) => {
+  const prisma = req.prisma; // Obtener el cliente Prisma del request
     console.log('parametros', req.params);
     console.log('body', req.body);
     try {

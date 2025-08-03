@@ -1,9 +1,15 @@
 const router = require('express').Router()
 const refequipoController = require('../../../controllers/refequipoController')
 const auth = require('../../middleware/auth');
+const attachPrisma = require('../../middleware/attachPrisma');
 
 //Hasta este punto ya vamos en api/refequipo ya comenzamos a
 // manejar los metodos
+
+// Ruta pública (no requiere token ni cliente Prisma)
+
+// A partir de aquí, se requiere token y se adjunta cliente Prisma
+router.use(attachPrisma);
 
 //.com/api/refequipo/listar
 router.get("/listar",auth.verificarUsuario,refequipoController.listar);

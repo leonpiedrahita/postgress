@@ -1,36 +1,54 @@
 const { Prisma } = require('@prisma/client');
 
+// Lista de tablas que no deben ser auditadas
+const MODELOS_EXCLUIDOS = ['AuditLog'];
+
 const auditExtension = Prisma.defineExtension((client) => {
   return client.$extends({
     query: {
       $allModels: {
         async $allOperations({ model, operation, args, query }) {
-          // Ejecutar la consulta principal
+          // Saltar si el modelo está excluido o si es solo una consulta
+          if (MODELOS_EXCLUIDOS.includes(model) || !['create', 'update', 'delete'].includes(operation)) {
+            return query(args);
+          }
+
+          let beforeData = null;
+
+          // Captura de datos previos si es update o delete
+          if (['update', 'delete'].includes(operation)) {
+            try {
+              beforeData = await client[model].findUnique({
+                where: args.where,
+              });
+            } catch {
+              // Ignorar error si no se puede capturar beforeData
+            }
+          }
+
+          // Ejecutar operación
           const result = await query(args);
 
-          // Registrar solo operaciones de escritura
-          if (['create', 'update', 'delete'].includes(operation)) {
-            const beforeData =
-              operation === 'update' || operation === 'delete'
-                ? await client[model].findUnique({ where: args.where })
-                : null;
+          // Captura de datos posteriores si es create o update
+          let afterData = null;
+          if (['create', 'update'].includes(operation)) {
+            afterData = result;
+          }
 
-            const afterData =
-              operation === 'create' || operation === 'update'
-                ? args.data
-                : null;
-
-            // Insertar el log de auditoría
+          // Registrar en la tabla de auditoría
+          try {
             await client.auditLog.create({
               data: {
-                userId: client.userId || 'anonymous', // Reemplázalo con la lógica para obtener el usuario actual
+                userId: client.nombre || 'anonymous',
                 action: operation.toUpperCase(),
                 tableName: model,
-                recordId: args.where?.id || null,
+                recordId: result?.id || args.where?.id || null,
                 beforeData,
                 afterData,
               },
             });
+          } catch (err) {
+            console.warn('Error al registrar auditoría:', err.message);
           }
 
           return result;

@@ -5,6 +5,7 @@ const equipoController = require('../../../controllers/equipoController');
 const refequipoController = require('../../../controllers/refequipoController');
 const multer = require('multer');
 const auth = require('../../middleware/auth');
+const attachPrisma = require('../../middleware/attachPrisma');
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
@@ -24,6 +25,10 @@ const validarArchivo = (req, res, next) => {
     next();  
 };
 
+// Ruta pública (no requiere token ni cliente Prisma)
+
+// A partir de aquí, se requiere token y se adjunta cliente Prisma
+router.use(attachPrisma);
 // Ruta para guardar archivo en S3 y registrar reporte externo
 router.post(
     '/guardar',

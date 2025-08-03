@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "audit_logs" ALTER COLUMN "timestamp" SET DEFAULT CURRENT_TIMESTAMP;

@@ -1,7 +1,7 @@
-const prisma = require('../src/prisma-client'); // Importa el cliente Prisma configurado
 
 // Listar todos los equipos
 exports.listar = async (req, res) => {
+  const prisma = req.prisma; // Obtener el cliente Prisma del request
   try {
     // Obtener todos los refEquipos incluyendo los documentos legales relacionados
     const equipos = await prisma.refEquipo.findMany({
@@ -19,6 +19,7 @@ exports.listar = async (req, res) => {
 };
 
 exports.listaruno = async (req, res) => {
+  const prisma = req.prisma; // Obtener el cliente Prisma del request
   try {
     const id = parseInt(req.params.id);
 
@@ -41,6 +42,7 @@ exports.listaruno = async (req, res) => {
 };
 // Registrar un nuevo equipo
 exports.registrar = async (req, res) => {
+  const prisma = req.prisma; // Obtener el cliente Prisma del request
   try {
     // Verifica si el equipo ya existe con el mismo nombre
     const equipoExistente = await prisma.refEquipo.findUnique({
@@ -93,6 +95,7 @@ exports.registrar = async (req, res) => {
 
 // Actualizar un equipo
 exports.actualizar = async (req, res) => {
+  const prisma = req.prisma; // Obtener el cliente Prisma del request
   try {
     const id = parseInt(req.params.id);
 
@@ -114,6 +117,7 @@ exports.actualizar = async (req, res) => {
   }
 };
 exports.registrardocumento = async (req, res) => {
+  const prisma = req.prisma; // Obtener el cliente Prisma del request
   console.log('req.body', req.body);
   console.log('req.file', req.file);    
   console.log('res.locals.llave', res.locals.llave);

@@ -1,6 +1,7 @@
 const prisma = require('../src/prisma-client'); // Importa el cliente Prisma con la extensión de auditoría
 
 exports.listar = async (req, res) => {
+  const prisma = req.prisma;
   try {
     const clientes = await prisma.cliente.findMany({
       include: {
@@ -21,6 +22,7 @@ exports.listar = async (req, res) => {
 };
 
 exports.registrar = async (req, res) => {
+  const prisma = req.prisma;
   try {
     const { nombre, nit, sedePrincipal } = req.body;
 
@@ -80,6 +82,7 @@ exports.registrar = async (req, res) => {
 };
 
 exports.actualizar = async (req, res) => {
+  const prisma = req.prisma;
   try {
     const id = parseInt(req.params.id);
     const { nombre, nit, sedePrincipal } = req.body;
@@ -142,6 +145,7 @@ exports.actualizar = async (req, res) => {
   }
 };
 exports.agregarsede = async (req, res) => {
+  const prisma = req.prisma;
   try {
     const clienteId = parseInt(req.params.id);
 
@@ -171,6 +175,7 @@ exports.agregarsede = async (req, res) => {
   }
 };
 exports.eliminarsede = async (req, res) => {
+  const prisma = req.prisma;
   try {
     const sedeId = parseInt(req.body.sedeId);
 

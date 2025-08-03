@@ -1,7 +1,7 @@
-const prisma = require('../src/prisma-client'); // Importa el cliente Prisma con la extensión de auditoría
 
 
 exports.listar = async (req, res) => {
+  const prisma = req.prisma;
   try {
     const reportes = await prisma.reporte.findMany();
     res.status(200).json(reportes);
@@ -14,6 +14,8 @@ exports.listar = async (req, res) => {
 };
 
 exports.listaruno = async (req, res) => {
+  
+ const prisma = req.prisma;
   const id = req.params.id;
   try {
     const reporte = await prisma.reporte.findUnique({
@@ -34,6 +36,7 @@ exports.listaruno = async (req, res) => {
 };
 
 exports.registrar = async (req, res,next) => {
+  const prisma = req.prisma;
   try {
     // Contar solo los registros donde `numero` no sea nulo
     const contador = await prisma.reporte.count({
@@ -87,6 +90,7 @@ exports.registrar = async (req, res,next) => {
 };
 
 exports.registrarexterno = async (req, res, next) => {
+  const prisma = req.prisma;
   try {
     const reporteexterno = JSON.parse(req.body.reporte);
     const nuevoReporte = {
@@ -122,6 +126,7 @@ exports.registrarexterno = async (req, res, next) => {
 };
 
 exports.actualizar = async (req, res) => {
+  const prisma = req.prisma;  
   const id = req.params.id;
   try {
     const updateOps = req.body;
@@ -143,6 +148,7 @@ exports.actualizar = async (req, res) => {
   }
 };
 exports.crearDocumentoSoporte = async (req, res) => {
+  const prisma = req.prisma;
   try {
     const nombredocumento = JSON.parse(req.body.nombredocumento);
     const nuevoDocumento = await prisma.documentoSoporte.create({

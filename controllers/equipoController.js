@@ -1,8 +1,8 @@
-const prisma = require('../src/prisma-client'); // Importa el cliente Prisma configurado
 const tokenServices = require('../services/token'); // Importa el servicio de tokens
 
 // Listar todos los equipos
 exports.listar = async (req, res) => {
+  const prisma = req.prisma;
   try {
     const equipos = await prisma.equipo.findMany({
       include: {
@@ -33,6 +33,7 @@ exports.listar = async (req, res) => {
 
 // Registrar un nuevo equipo
 exports.registrar = async (req, res) => {
+  const prisma = req.prisma;
   console.log('body', req.body);
   try {
     const validationResponse = await tokenServices.decode(req.headers.token);
@@ -88,6 +89,7 @@ exports.registrar = async (req, res) => {
 
 // Actualizar un equipo
 exports.actualizar = async (req, res) => {
+  const prisma = req.prisma;
   console.log('body', req.body);
   console.log('id', req.params.id);
   try {
@@ -166,6 +168,7 @@ exports.actualizar = async (req, res) => {
 
 // Registrar un reporte
 exports.registrarreporte = async (req, res) => {
+  const prisma = req.prisma;
   try {
     const validationResponse = await tokenServices.decode(req.headers.token);
     const id = parseInt(req.body.id_equipo);
@@ -192,6 +195,7 @@ exports.registrarreporte = async (req, res) => {
 
 // Registrar un reporte externo
 exports.registrarreporteexterno = async (req, res) => {
+  const prisma = req.prisma;
   try {
     const validationResponse = await tokenServices.decode(req.headers.token);
     const id = parseInt(req.body.id_equipo);
@@ -219,6 +223,7 @@ exports.registrarreporteexterno = async (req, res) => {
 
 // Registrar un documento
 exports.registrardocumento = async (req, res) => {
+  const prisma = req.prisma;
   try {
     const id = parseInt(req.body.id_equipo);
     const nombredocumento = JSON.parse(req.body.nombredocumento);
@@ -241,6 +246,7 @@ exports.registrardocumento = async (req, res) => {
 
 // Buscar equipos
 exports.buscar = async (req, res) => {
+  const prisma = req.prisma;
   try {
     const equipos = await prisma.equipo.findMany({
       where: { ...req.body.buscar },
@@ -258,6 +264,7 @@ exports.buscar = async (req, res) => {
 
 // Listar un equipo por ID
 exports.listaruno = async (req, res) => {
+  const prisma = req.prisma;
   try {
     const id = parseInt(req.params.id);
 
@@ -302,6 +309,7 @@ exports.listaruno = async (req, res) => {
 };
 // Buscar equipos de manera dinámica (incluyendo búsqueda por nombre del propietario)
 exports.buscarequipos = async (req, res) => {
+  const prisma = req.prisma;
   try {
     // Obtén los parámetros de búsqueda del cuerpo de la solicitud
     const { nombre, serie, contrato, propietarioNombre } = req.body;
@@ -368,6 +376,7 @@ exports.buscarequipos = async (req, res) => {
 };
 // Registrar un reporte externo
 exports.actualizarcronograma = async (req, res) => {
+  const prisma = req.prisma;
   const { id_equipo, fechaDePreventivo } = req.body;
 console.log('id_equipo', id_equipo);
 console.log('fechaDePreventivo', fechaDePreventivo);

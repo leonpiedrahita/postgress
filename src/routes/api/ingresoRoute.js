@@ -1,6 +1,13 @@
 const router = require('express').Router()
 const ingresoController = require('../../../controllers/ingresoController')
 const auth = require('../../middleware/auth');
+const attachPrisma = require('../../middleware/attachPrisma');
+
+
+// Ruta pública (no requiere token ni cliente Prisma)
+
+// A partir de aquí, se requiere token y se adjunta cliente Prisma
+router.use(attachPrisma);
 // Rutas para listar los ingresos
 router.get('/ingresos',auth.verificarUsuario, ingresoController.listarTodosLosIngresos);
 router.get('/estado/:estado',auth.verificarUsuario, ingresoController.listarIngresosPorEstado);
