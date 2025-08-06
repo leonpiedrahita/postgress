@@ -12,6 +12,7 @@ const getUserPrisma = async (req) => {
 };
 
 exports.listar = async (req, res, next) => {
+  const prisma = req.prisma;
   try {
     const prisma = await getUserPrisma(req);
     const usuarios = await prisma.usuario.findMany({
@@ -32,6 +33,7 @@ exports.listar = async (req, res, next) => {
 };
 
 exports.registrar = async (req, res, next) => {
+   const prisma = req.prisma;
   try {
     const existingUser = await prisma.usuario.findUnique({
       where: { email: req.body.email },
@@ -61,6 +63,7 @@ exports.registrar = async (req, res, next) => {
 };
 
 exports.ingresar = async (req, res, next) => {
+  const prisma = req.prisma;
   try {
     const usuario = await prismaBase.usuario.findUnique({
       where: { email: req.body.email },
@@ -94,6 +97,7 @@ exports.ingresar = async (req, res, next) => {
 };
 
 exports.actualizar = async (req, res, next) => {
+  const prisma = req.prisma;
   try {
     const prisma = await getUserPrisma(req);
     const usuario = await prisma.usuario.update({
@@ -115,6 +119,7 @@ exports.actualizar = async (req, res, next) => {
 };
 
 exports.actualizarfirma = async (req, res) => {
+  const prisma = req.prisma;
   try {
     const prisma = await getUserPrisma(req);
     const usuarioActualizado = await prisma.usuario.update({
@@ -135,6 +140,7 @@ exports.actualizarfirma = async (req, res) => {
 };
 
 exports.buscarfirma = async (req, res) => {
+  const prisma = req.prisma;
   try {
     const prisma = await getUserPrisma(req);
     const decoded = await tokenServices.decode(req.headers.token);
