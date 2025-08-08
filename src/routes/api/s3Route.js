@@ -33,7 +33,7 @@ router.use(attachPrisma);
 router.post(
     '/guardar',
     upload.single('file'),
-    auth.verificarAdminSopCom,
+    auth.verificarUsuario,
     validarArchivo,
     s3Controller.guardarreporte,
     reporteController.registrarexterno, 

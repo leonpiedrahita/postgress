@@ -14,10 +14,10 @@ router.use(attachPrisma);
 router.get("/listar",auth.verificarUsuario,equipoController.listar );
 
 //.com/api/usuario/register
-router.post("/registrar",auth.verificarAdminCal,equipoController.registrar);
+router.post("/registrar",auth.verificarAdminCalCot,equipoController.registrar);
 
 //.com/api/usuario/actualizar/id del elemento de la colección que quiero modificar
-router.patch("/actualizar/:id",auth.verificarAdminCal,equipoController.actualizar);
+router.patch("/actualizar/:id",auth.verificarAdminCalCot,equipoController.actualizar);
 
 router.get("/buscar",auth.verificarUsuario,equipoController.buscar);
 router.get("/listaruno/:id",auth.verificarUsuario,equipoController.listaruno);

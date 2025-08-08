@@ -17,7 +17,7 @@ router.get("/listar",auth.verificarUsuario,refequipoController.listar);
 //.com/api/refequipo/registrar
 router.post("/registrar",auth.verificarAdminCal,refequipoController.registrar);
 
-router.patch("/actualizar/:id",auth.verificarAdminCal,refequipoController.actualizar);
+router.patch("/actualizar/:id",auth.verificarAdminCalCot,refequipoController.actualizar);
 
 router.get("/listaruno/:id",auth.verificarUsuario,refequipoController.listaruno);
 
