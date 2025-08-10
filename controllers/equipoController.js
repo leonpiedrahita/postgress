@@ -312,7 +312,7 @@ exports.buscarequipos = async (req, res) => {
   const prisma = req.prisma;
   try {
     // Obtén los parámetros de búsqueda del cuerpo de la solicitud
-    const { nombre, serie, contrato, propietarioNombre } = req.body;
+    const { nombre, serie, contrato, clienteNombre } = req.body;
 
     // Construye el objeto `where` dinámicamente según los parámetros proporcionados
     const filtros = {};
@@ -329,10 +329,10 @@ exports.buscarequipos = async (req, res) => {
       filtros.tipoDeContrato = { equals: contrato }; // Busca equipos por estado exacto
     }
 
-    if (propietarioNombre) {
+    if (clienteNombre) {
       // Filtro para buscar equipos por el nombre del propietario
-      filtros.propietario = {
-        nombre: { contains: propietarioNombre, mode: 'insensitive' }, // Busca propietarios cuyo nombre contenga el texto
+      filtros.cliente = {
+        nombre: { contains: clienteNombre, mode: 'insensitive' }, // Busca propietarios cuyo nombre contenga el texto
       };
     }
 

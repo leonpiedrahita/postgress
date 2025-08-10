@@ -39,7 +39,7 @@ module.exports = {
       },
       process.env.JWT_KEY, // Llave secreta
       {
-        expiresIn: "3600000", // Expiración en milisegundos
+        expiresIn: "10800000", // Expiración en milisegnpm run deundos
       }
     );
     return token;
