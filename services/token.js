@@ -39,34 +39,36 @@ module.exports = {
       },
       process.env.JWT_KEY, // Llave secreta
       {
-        expiresIn: "10800000", // Expiración en milisegnpm run deundos
+        expiresIn: 10800, // Expiración en SEGUNDOS  run deundos
       }
     );
     return token;
   },
 
   decode: async (token) => {
-    try {
-      const { id } = jwt.verify(token, process.env.JWT_KEY); // Verificar el token
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_KEY); // Verifica y devuelve el payload completo
+    console.log("Token válido hasta:", new Date(decoded.exp * 1000).toLocaleString());
 
-      // Buscar usuario activo en la base de datos
-      const user = await prisma.usuario.findUnique({
-        where: {
-          id: id,
-          estado: 1,
-        },
-      });
+    // Buscar usuario activo en la base de datos
+    const user = await prisma.usuario.findUnique({
+      where: {
+        id: decoded.id,
+        estado: 1,
+      },
+    });
 
-      if (user) {
-        return user;
-      } else {
-        return false;
-      }
-    } catch (error) {
-      if (error.message === "jwt expired") {
-        return "token vencido";
-      }
+    if (user) {
+      return user;
+    } else {
       return false;
     }
-  },
+  } catch (error) {
+    console.error("Error al verificar token:", error.name, error.message);
+    if (error.name === "TokenExpiredError") {
+      return "token vencido";
+    }
+    return false;
+  }
+}
 };
