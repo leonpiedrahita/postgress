@@ -18,7 +18,7 @@ exports.listar = async (req, res) => {
             propietario: true, // Incluye información del propietario en el historial
             proveedor: true, // Incluye información del proveedor en el historial 
             /* responsable: true, // Incluye información del responsable en el historial */
-             // Incluye información del tipo de contrato en el historial
+            // Incluye información del tipo de contrato en el historial
           },
         },
 
@@ -55,14 +55,14 @@ exports.registrar = async (req, res) => {
         placaDeInventario: req.body.nuevoequipo.placaDeInventario,
         tipoDeContrato: req.body.nuevoequipo.tipoDeContrato,
         estado: 'Activo',
-        ubicacionNombre: req.body.nuevoequipo.ubicacion.nombre,
-        ubicacionDireccion: req.body.nuevoequipo.ubicacion.direccion,
+        ubicacionNombre: req.body.nuevoequipo.ubicacionNombre,
+        ubicacionDireccion: req.body.nuevoequipo.ubicacionDireccion,
         proveedor: { connect: { id: req.body.nuevoequipo.proveedor.id } }, // Conecta al proveedor por ID
         referencia: { connect: { id: req.body.nuevoequipo.id } },
         propietario: { connect: { id: req.body.nuevoequipo.propietario.id } },
         cliente: { connect: { id: req.body.nuevoequipo.cliente.id } },
-       
-    
+
+
       },
     });
     // Crear el historial propietario como una nueva entrada en la tabla HistorialPropietario
@@ -71,8 +71,8 @@ exports.registrar = async (req, res) => {
         clienteId: req.body.nuevoequipo.cliente.id,
         propietarioId: req.body.nuevoequipo.propietario.id,
         proveedorId: req.body.nuevoequipo.proveedor.id,
-        ubicacionNombre: req.body.nuevoequipo.ubicacion.nombre,
-        ubicacionDireccion: req.body.nuevoequipo.ubicacion.direccion,
+        ubicacionNombre: req.body.nuevoequipo.ubicacionNombre,
+        ubicacionDireccion: req.body.nuevoequipo.ubicacionDireccion,
         responsableId: validationResponse.id,
         tipoDeContrato: req.body.nuevoequipo.tipoDeContrato,
         fecha: new Date(req.body.nuevoequipo.fechaDeMovimiento),
@@ -101,29 +101,29 @@ exports.actualizar = async (req, res) => {
 
       ubicacionNombre,
       ubicacionDireccion,
-      cliente,
-      propietario,
+      clienteId,
+      propietarioId,
       placaDeInventario,
       tipoDeContrato,
-      proveedor
+      proveedorId
     } = req.body;
 
     // Verifica que todos los campos obligatorios estén presentes
-    if (!placaDeInventario || !tipoDeContrato || !ubicacionNombre || !ubicacionDireccion || !cliente || !propietario||!proveedor) {
+    if (!placaDeInventario || !tipoDeContrato || !ubicacionNombre || !ubicacionDireccion || !clienteId || !propietarioId || !proveedorId) {
       return res.status(400).json({ error: "Todos los campos son obligatorios" });
     }
 
     // Obtén el equipo actual para acceder al historial existente
     const equipoActual = await prisma.equipo.findUnique({
       where: { id },
-      
+
     });
 
     if (!equipoActual) {
       return res.status(404).json({ error: "Equipo no encontrado" });
     }
 
-  
+
 
     // Actualiza los campos del equipo y el historial de propietarios
     const updatedEquipo = await prisma.equipo.update({
@@ -134,29 +134,29 @@ exports.actualizar = async (req, res) => {
         ubicacionDireccion, // Actualiza la dirección
         placaDeInventario, // Actualiza la placa de inventario
         tipoDeContrato, // Actualiza el tipo de contrato
-        cliente: { connect: { id: cliente.id } }, // Conecta al cliente por ID
-        propietario: { connect: { id: propietario.id } }, // Conecta al propietario por ID
-        proveedor: { connect: { id: proveedor.id } }, // Conecta al proveedor por ID
-        
+        cliente: { connect: { id: clienteId } }, // Conecta al cliente por ID
+        propietario: { connect: { id: propietarioId } }, // Conecta al propietario por ID
+        proveedor: { connect: { id: proveedorId } }, // Conecta al proveedor por ID
+
       },
     });
     const nuevoHistorialdePropietario = {
 
-      clienteId: req.body.cliente.id,
-        propietarioId: req.body.propietario.id,
-        proveedorId: req.body.proveedor.id,
-        ubicacionNombre: req.body.ubicacionNombre,
-        ubicacionDireccion: req.body.ubicacionDireccion,
-        responsableId: validationResponse.id,
-        tipoDeContrato, // Actualiza el tipo de contrato
-        fecha: new Date(),
-        equipoId: id,
+      clienteId: req.body.clienteId,
+      propietarioId: req.body.propietarioId,
+      proveedorId: req.body.proveedorId,
+      ubicacionNombre: req.body.ubicacionNombre,
+      ubicacionDireccion: req.body.ubicacionDireccion,
+      responsableId: validationResponse.id,
+      tipoDeContrato, // Actualiza el tipo de contrato
+      fecha: new Date(),
+      equipoId: id,
 
-    } 
+    }
 
     await prisma.historialPropietario.create({
       data: { ...nuevoHistorialdePropietario, equipoId: id },
-    });  
+    });
     // Responde con el equipo actualizado
     res.status(200).json({ message: "Equipo actualizado", equipo: updatedEquipo });
   } catch (err) {
@@ -279,11 +279,11 @@ exports.listaruno = async (req, res) => {
           include: {
             responsable: true, // Incluye información del responsable en el historial de servicios
             reporte: true, // Incluye la identificación del reporte en el historial de servicios
-            equipo  : true, // Incluye información del equipo en el historial de servicios
+            equipo: true, // Incluye información del equipo en el historial de servicios
             documentosSoporte: true
-              
-            }, // Incluye los documentos de soporte en el historial de servicios
-          
+
+          }, // Incluye los documentos de soporte en el historial de servicios
+
         }, // Incluye el historial de servicios
         documentosLegales: true, // Incluye documentos legales
         historialPropietarios: {
@@ -348,11 +348,11 @@ exports.buscarequipos = async (req, res) => {
           include: {
             responsable: true, // Incluye información del responsable en el historial de servicios
             reporte: true, // Incluye la identificación del reporte en el historial de servicios
-            equipo  : true, // Incluye información del equipo en el historial de servicios
+            equipo: true, // Incluye información del equipo en el historial de servicios
             documentosSoporte: true
-              
-            }, // Incluye los documentos de soporte en el historial de servicios
-          
+
+          }, // Incluye los documentos de soporte en el historial de servicios
+
         }, // Incluye el historial de servicios
         documentosLegales: true, // Incluye documentos legales
         historialPropietarios: {
@@ -378,8 +378,8 @@ exports.buscarequipos = async (req, res) => {
 exports.actualizarcronograma = async (req, res) => {
   const prisma = req.prisma;
   const { id_equipo, fechaDePreventivo } = req.body;
-console.log('id_equipo', id_equipo);
-console.log('fechaDePreventivo', fechaDePreventivo);
+  console.log('id_equipo', id_equipo);
+  console.log('fechaDePreventivo', fechaDePreventivo);
   try {
     const equipoActualizado = await prisma.equipo.update({
       where: { id: parseInt(id_equipo) },
