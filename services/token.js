@@ -48,7 +48,15 @@ module.exports = {
   decode: async (token) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_KEY); // Verifica y devuelve el payload completo
-    console.log("Token válido hasta:", new Date(decoded.exp * 1000).toLocaleString());
+    
+    // Expiración en UTC
+    console.log("Token válido hasta (UTC):", new Date(decoded.exp * 1000).toISOString());
+    
+    // Expiración en hora de Colombia
+    console.log(
+      "Token válido hasta (Colombia):",
+      new Date(decoded.exp * 1000).toLocaleString("es-CO", { timeZone: "America/Bogota" })
+    );
 
     // Buscar usuario activo en la base de datos
     const user = await prisma.usuario.findUnique({
