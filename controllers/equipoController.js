@@ -92,13 +92,12 @@ exports.actualizar = async (req, res) => {
   const prisma = req.prisma;
   console.log('body', req.body);
   console.log('id', req.params.id);
+
   try {
     const validationResponse = await tokenServices.decode(req.headers.token);
-    const id = parseInt(req.params.id); // Convierte el ID a número entero
+    const id = parseInt(req.params.id);
 
-    // Obtén los valores del cuerpo de la solicitud
     const {
-
       ubicacionNombre,
       ubicacionDireccion,
       clienteId,
@@ -108,59 +107,49 @@ exports.actualizar = async (req, res) => {
       proveedorId
     } = req.body;
 
-    // Verifica que todos los campos obligatorios estén presentes
+    // Validación de campos obligatorios
     if (!placaDeInventario || !tipoDeContrato || !ubicacionNombre || !ubicacionDireccion || !clienteId || !propietarioId || !proveedorId) {
       return res.status(400).json({ error: "Todos los campos son obligatorios" });
     }
 
-    // Obtén el equipo actual para acceder al historial existente
-    const equipoActual = await prisma.equipo.findUnique({
-      where: { id },
-
-    });
-
+    // Verifica que el equipo exista
+    const equipoActual = await prisma.equipo.findUnique({ where: { id } });
     if (!equipoActual) {
       return res.status(404).json({ error: "Equipo no encontrado" });
     }
 
+    // Transacción: update + create
+    const [updatedEquipo, historial] = await prisma.$transaction([
+      prisma.equipo.update({
+        where: { id },
+        data: {
+          ubicacionNombre,
+          ubicacionDireccion,
+          placaDeInventario,
+          tipoDeContrato,
+          cliente: { connect: { id: clienteId } },
+          propietario: { connect: { id: propietarioId } },
+          proveedor: { connect: { id: proveedorId } },
+        },
+      }),
+      prisma.historialPropietario.create({
+        data: {
+          clienteId,
+          propietarioId,
+          proveedorId,
+          ubicacionNombre,
+          ubicacionDireccion,
+          responsableId: validationResponse.id,
+          tipoDeContrato,
+          fecha: new Date(),
+          equipoId: id,
+        },
+      }),
+    ]);
 
+    res.status(200).json({ message: "Equipo actualizado", equipo: updatedEquipo, historial });
 
-    // Actualiza los campos del equipo y el historial de propietarios
-    const updatedEquipo = await prisma.equipo.update({
-      where: { id },
-      data: {
-        // Actualiza la marca
-        ubicacionNombre, // Actualiza la ubicación
-        ubicacionDireccion, // Actualiza la dirección
-        placaDeInventario, // Actualiza la placa de inventario
-        tipoDeContrato, // Actualiza el tipo de contrato
-        cliente: { connect: { id: clienteId } }, // Conecta al cliente por ID
-        propietario: { connect: { id: propietarioId } }, // Conecta al propietario por ID
-        proveedor: { connect: { id: proveedorId } }, // Conecta al proveedor por ID
-
-      },
-    });
-    const nuevoHistorialdePropietario = {
-
-      clienteId: req.body.clienteId,
-      propietarioId: req.body.propietarioId,
-      proveedorId: req.body.proveedorId,
-      ubicacionNombre: req.body.ubicacionNombre,
-      ubicacionDireccion: req.body.ubicacionDireccion,
-      responsableId: validationResponse.id,
-      tipoDeContrato, // Actualiza el tipo de contrato
-      fecha: new Date(),
-      equipoId: id,
-
-    }
-
-    await prisma.historialPropietario.create({
-      data: { ...nuevoHistorialdePropietario, equipoId: id },
-    });
-    // Responde con el equipo actualizado
-    res.status(200).json({ message: "Equipo actualizado", equipo: updatedEquipo });
   } catch (err) {
-    // Captura y maneja errores
     console.error("Error al actualizar el equipo:", err);
     res.status(500).json({ error: err.message });
   }
