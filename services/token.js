@@ -12,12 +12,12 @@ const checkToken = async (token) => {
   }
 
   // Buscar usuario activo en la base de datos
-  const user = await prisma.usuario.findUnique({
-    where: {
-      id: localID,
-      estado: 1,
-    },
-  });
+  const user = await prisma.usuario.findFirst({
+  where: {
+    id: localID,
+    estado: 1,
+  },
+});
 
   if (user) {
     const newToken = encode(user); // Generar un nuevo token
@@ -29,21 +29,33 @@ const checkToken = async (token) => {
 
 module.exports = {
   encode: (user) => {
-    const token = jwt.sign(
-      {
-        id: user.id, // Cambiado de `user[0]._id` a `user.id` para Prisma
-        nombre: user.nombre,
-        rol: user.rol,
-        email: user.email,
-        estado: user.estado,
-      },
-      process.env.JWT_KEY, // Llave secreta
-      {
-        expiresIn: 10800, // Expiración en SEGUNDOS  run deundos
-      }
-    );
-    return token;
-  },
+  // Fecha actual en hora de Colombia
+  const nowCol = new Date(
+    new Date().toLocaleString("en-US", { timeZone: "America/Bogota" })
+  );
+
+  // Configurar vencimiento a la medianoche siguiente (hora Colombia)
+  const tomorrowMidnightCol = new Date(nowCol);
+  tomorrowMidnightCol.setHours(24, 0, 0, 0); // próximo día a las 00:00
+
+  // Pasar esa fecha a epoch (UTC, en segundos)
+  const exp = Math.floor(tomorrowMidnightCol.getTime() / 1000);
+
+  // Firmar token con expiración fija
+  const token = jwt.sign(
+    {
+      id: user.id,
+      nombre: user.nombre,
+      rol: user.rol,
+      email: user.email,
+      estado: user.estado,
+      exp, // vencimiento exacto (medianoche Colombia)
+    },
+    process.env.JWT_KEY
+  );
+
+  return token;
+},
 
   decode: async (token) => {
   try {
