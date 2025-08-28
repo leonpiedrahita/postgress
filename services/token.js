@@ -29,19 +29,23 @@ const checkToken = async (token) => {
 
 module.exports = {
   encode: (user) => {
-  // Fecha actual en hora de Colombia
+  // Fecha actual en Bogotá
+  const now = new Date();
   const nowCol = new Date(
-    new Date().toLocaleString("en-US", { timeZone: "America/Bogota" })
+    now.toLocaleString("en-US", { timeZone: "America/Bogota" })
   );
 
-  // Configurar vencimiento a la medianoche siguiente (hora Colombia)
+  // Próxima medianoche en Bogotá
   const tomorrowMidnightCol = new Date(nowCol);
-  tomorrowMidnightCol.setHours(24, 0, 0, 0); // próximo día a las 00:00
+  tomorrowMidnightCol.setHours(24, 0, 0, 0);
 
-  // Pasar esa fecha a epoch (UTC, en segundos)
-  const exp = Math.floor(tomorrowMidnightCol.getTime() / 1000);
+  // IMPORTANTE: obtener timestamp en UTC, no en local
+  const exp = Math.floor(
+    new Date(
+      tomorrowMidnightCol.toLocaleString("en-US", { timeZone: "UTC" })
+    ).getTime() / 1000
+  );
 
-  // Firmar token con expiración fija
   const token = jwt.sign(
     {
       id: user.id,
@@ -49,7 +53,7 @@ module.exports = {
       rol: user.rol,
       email: user.email,
       estado: user.estado,
-      exp, // vencimiento exacto (medianoche Colombia)
+      exp,
     },
     process.env.JWT_KEY
   );
