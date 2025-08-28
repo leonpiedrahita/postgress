@@ -29,70 +29,57 @@ const checkToken = async (token) => {
 
 module.exports = {
   encode: (user) => {
-  // Fecha actual en Bogotá
-  const now = new Date();
-  const nowCol = new Date(
-    now.toLocaleString("en-US", { timeZone: "America/Bogota" })
-  );
+    // Fecha actual en UTC
+    const nowUTC = new Date();
 
-  // Próxima medianoche en Bogotá
-  const tomorrowMidnightCol = new Date(nowCol);
-  tomorrowMidnightCol.setHours(24, 0, 0, 0);
+    // Crear fecha de mañana a las 00:00 UTC
+    const tomorrowMidnightUTC = new Date(Date.UTC(
+      nowUTC.getUTCFullYear(),
+      nowUTC.getUTCMonth(),
+      nowUTC.getUTCDate() + 1, // día siguiente
+      0, 0, 0, 0
+    ));
 
-  // IMPORTANTE: obtener timestamp en UTC, no en local
-  const exp = Math.floor(
-    new Date(
-      tomorrowMidnightCol.toLocaleString("en-US", { timeZone: "UTC" })
-    ).getTime() / 1000
-  );
+    // Timestamp en segundos
+    const exp = Math.floor(tomorrowMidnightUTC.getTime() / 1000);
 
-  const token = jwt.sign(
-    {
-      id: user.id,
-      nombre: user.nombre,
-      rol: user.rol,
-      email: user.email,
-      estado: user.estado,
-      exp,
-    },
-    process.env.JWT_KEY
-  );
-
-  return token;
-},
-
-  decode: async (token) => {
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_KEY); // Verifica y devuelve el payload completo
-    
-    // Expiración en UTC
-    console.log("Token válido hasta (UTC):", new Date(decoded.exp * 1000).toISOString());
-    
-    // Expiración en hora de Colombia
-    console.log(
-      "Token válido hasta (Colombia):",
-      new Date(decoded.exp * 1000).toLocaleString("es-CO", { timeZone: "America/Bogota" })
+    const token = jwt.sign(
+      {
+        id: user.id,
+        nombre: user.nombre,
+        rol: user.rol,
+        email: user.email,
+        estado: user.estado,
+        exp, // vencimiento exacto en medianoche UTC
+      },
+      process.env.JWT_KEY
     );
 
-    // Buscar usuario activo en la base de datos
-    const user = await prisma.usuario.findUnique({
-      where: {
-        id: decoded.id,
-        estado: 1,
-      },
-    });
+    return token;
+  },
 
-    if (user) {
-      return user;
-    } else {
+  decode: async (token) => {
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_KEY);
+
+      // Expiración en UTC
+      console.log("Token válido hasta (UTC):", new Date(decoded.exp * 1000).toISOString());
+
+      // Buscar usuario activo en la base de datos
+      const user = await prisma.usuario.findFirst({
+        where: {
+          id: decoded.id,
+          estado: 1,
+        },
+      });
+
+      return user || false;
+    } catch (error) {
+      console.error("Error al verificar token:", error.name, error.message);
+      if (error.name === "TokenExpiredError") {
+        return "token vencido";
+      }
       return false;
     }
-  } catch (error) {
-    console.error("Error al verificar token:", error.name, error.message);
-    if (error.name === "TokenExpiredError") {
-      return "token vencido";
-    }
-    return false;
-  }
-}
+  },
 };
