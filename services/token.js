@@ -13,11 +13,11 @@ const checkToken = async (token) => {
 
   // Buscar usuario activo en la base de datos
   const user = await prisma.usuario.findFirst({
-  where: {
-    id: localID,
-    estado: 1,
-  },
-});
+    where: {
+      id: localID,
+      estado: 1,
+    },
+  });
 
   if (user) {
     const newToken = encode(user); // Generar un nuevo token
@@ -29,19 +29,11 @@ const checkToken = async (token) => {
 
 module.exports = {
   encode: (user) => {
-    // Fecha actual en UTC
-    const nowUTC = new Date();
+    // Obtener el timestamp actual en segundos
+    const nowSeconds = Math.floor(Date.now() / 1000);
 
-    // Crear fecha de mañana a las 00:00 UTC
-    const tomorrowMidnightUTC = new Date(Date.UTC(
-      nowUTC.getUTCFullYear(),
-      nowUTC.getUTCMonth(),
-      nowUTC.getUTCDate() + 1, // día siguiente
-      0, 0, 0, 0
-    ));
-
-    // Timestamp en segundos
-    const exp = Math.floor(tomorrowMidnightUTC.getTime() / 1000);
+    // Calcular la expiración sumando 1 hora (3600 segundos)
+    const exp = nowSeconds + (60 * 60); // 60 segundos * 60 minutos = 3600 segundos (1 hora)
 
     const token = jwt.sign(
       {
@@ -50,7 +42,7 @@ module.exports = {
         rol: user.rol,
         email: user.email,
         estado: user.estado,
-        exp, // vencimiento exacto en medianoche UTC
+        exp, // Vencimiento exacto en 1 hora
       },
       process.env.JWT_KEY
     );
@@ -82,4 +74,5 @@ module.exports = {
       return false;
     }
   },
+
 };
