@@ -5,6 +5,7 @@ exports.listar = async (req, res) => {
   const prisma = req.prisma;
   try {
     const equipos = await prisma.equipo.findMany({
+      where: {estado: 'Activo'},
       include: {
         propietario: true, // Incluye información del propietario
         cliente: true, // Incluye información del cliente
@@ -304,7 +305,7 @@ exports.buscarequipos = async (req, res) => {
     const { nombre, serie, contrato, clienteNombre } = req.body;
 
     // Construye el objeto `where` dinámicamente según los parámetros proporcionados
-    const filtros = {};
+    const filtros = {estado: 'Activo'};
 
     if (nombre) {
       filtros.nombre = { contains: nombre, mode: 'insensitive' }; // Busca equipos cuyo nombre contenga el texto (insensible a mayúsculas/minúsculas)
