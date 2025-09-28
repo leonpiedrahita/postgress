@@ -33,7 +33,7 @@ module.exports = {
     const nowSeconds = Math.floor(Date.now() / 1000);
 
     // Calcular la expiración sumando 1 hora (3600 segundos)
-    const exp = nowSeconds + (60 * 60); // 60 segundos * 60 minutos = 3600 segundos (1 hora)
+    const exp = nowSeconds + (60 * 1200); // 60 segundos * 120 minutos = 7200 segundos (2 horas)
 
     const token = jwt.sign(
       {
@@ -42,7 +42,7 @@ module.exports = {
         rol: user.rol,
         email: user.email,
         estado: user.estado,
-        exp, // Vencimiento exacto en 1 hora
+        exp, // Vencimiento exacto en 2 horas
       },
       process.env.JWT_KEY
     );
