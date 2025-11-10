@@ -10,6 +10,7 @@ const attachPrisma = require('../../middleware/attachPrisma');
 router.use(attachPrisma);
 // Rutas para listar los ingresos
 router.get('/ingresos',auth.verificarUsuario, ingresoController.listarTodosLosIngresos);
+router.get('/ingresosabiertos',auth.verificarUsuario, ingresoController.listarIngresosAbiertos);
 router.get('/estado/:estado',auth.verificarUsuario, ingresoController.listarIngresosPorEstado);
 router.get('/serie/:serie',auth.verificarUsuario, ingresoController.listarIngresosPorSerieDeEquipo);
 router.get('/cliente/:nombreCliente',auth.verificarUsuario, ingresoController.listarIngresosPorNombreDeCliente);

@@ -23,6 +23,34 @@ exports.listarTodosLosIngresos = async (req, res) => {
   }
 };
 
+exports.listarIngresosAbiertos = async (req, res) => {
+  const prisma = req.prisma; // Obtener el cliente Prisma del request
+
+  try {
+    const ingresosAbiertos = await prisma.ingreso.findMany({
+      // 1. Filtrar por el estado "Abierto"
+      where: {
+        estado: 'Abierto',
+      },
+      // 2. Incluir las relaciones deseadas (Equipo, Cliente, Etapas)
+      include: {
+        equipo: {
+          include: {
+            cliente: true, // Incluye información del cliente relacionado
+          },
+        }, // Incluye información del equipo relacionado
+        etapas: true, // Incluir las etapas asociadas a cada ingreso
+      },
+    });
+
+    // 3. Enviar la respuesta
+    res.status(200).json(ingresosAbiertos.length > 0 ? ingresosAbiertos : []);
+  } catch (err) {
+    // 4. Manejo de errores
+    console.error(err);
+    res.status(500).json({ error: 'Ocurrió un error al listar los ingresos abiertos', detalles: err.message });
+  }
+};
 /**
  * Listar ingresos por estado
  */
@@ -176,7 +204,7 @@ exports.registrarIngreso = async (req, res) => {
       const ingresoAbierto = await prisma.ingreso.findFirst({
         where: {
           equipoId: equipo.id,
-          estado: 'Abierta',
+          estado: 'Abierto',
         },
       });
   
@@ -198,7 +226,7 @@ exports.registrarIngreso = async (req, res) => {
       const nuevoIngreso = await prisma.ingreso.create({
         data: {
           equipoId: equipo.id, // Relacionar al equipo
-          estado: 'Abierta', // Estado inicial
+          estado: 'Abierto', // Estado inicial
           etapaActual: 1, // Etapa actual inicial (int)
           ultimaEtapa: 1, // Última etapa inicial (int)
           etapas: {
@@ -272,8 +300,8 @@ exports.agregarEtapa = async (req, res) => {
         return res.status(404).json({ error: `No se encontró un ingreso con el id ${ingresoId}.` });
       }
   
-      if (ingreso.estado !== 'Abierta') {
-        return res.status(400).json({ error: `El ingreso con id ${ingresoId} no está en estado "Abierta".` });
+      if (ingreso.estado !== 'Abierto') {
+        return res.status(400).json({ error: `El ingreso con id ${ingresoId} no está en estado "Abierto".` });
       }
   
       // Obtener la etapa más reciente
