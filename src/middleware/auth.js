@@ -38,5 +38,7 @@ module.exports = {
   verificarAdminSopCom: verificarRol(['administrador', 'soporte', 'comercial']),
   verificarAdminCalCot: verificarRol(['administrador', 'cotizaciones', 'calidad']),
   verificarAdminSopComCot: verificarRol(['administrador', 'soporte', 'comercial', 'cotizaciones']),
-  verificarUsuario: verificarRol(['administrador', 'cotizaciones', 'calidad', 'soporte', 'comercial']),
+  verificarAdminSopCot: verificarRol(['administrador', 'soporte', 'cotizaciones']),
+  verificarAdminSopCotBod: verificarRol(['administrador', 'soporte', 'cotizaciones','bodega']),
+  verificarUsuario: verificarRol(['administrador', 'cotizaciones', 'calidad', 'soporte', 'comercial','bodega']),
 };

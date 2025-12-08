@@ -5,7 +5,11 @@ exports.listar = async (req, res) => {
   const prisma = req.prisma;
   try {
     const equipos = await prisma.equipo.findMany({
-      where: {estado: 'Activo'},
+      where: {
+        estado: {
+          not: 'Inactivo', //  Aquí se excluye el estado 'Inactivo'
+        },
+      },
       include: {
         propietario: true, // Incluye información del propietario
         cliente: true, // Incluye información del cliente
@@ -153,6 +157,55 @@ exports.actualizar = async (req, res) => {
   } catch (err) {
     console.error("Error al actualizar el equipo:", err);
     res.status(500).json({ error: err.message });
+  }
+};
+
+exports.actualizarEstado = async (req, res) => {
+  const prisma = req.prisma; // Asumiendo que Prisma Client está inyectado en req
+  console.log('body', req.body);
+  console.log('id', req.params.id);
+
+  try {
+    // 1. Decodificar el token para obtener el responsable (opcional, pero buena práctica si hay historial)
+    // const validationResponse = await tokenServices.decode(req.headers.token);
+
+    const id = parseInt(req.params.id);
+    const { nuevoEstado } = req.body;
+
+    // 2. Validación de campos obligatorios
+    if (!nuevoEstado) {
+      return res.status(400).json({ error: "El campo 'nuevoEstado' es obligatorio" });
+    }
+
+    // 3. Actualizar el estado del equipo
+    const updatedEquipo = await prisma.equipo.update({
+      where: { id },
+      data: {
+        estado: nuevoEstado,
+        // El campo 'updatedAt' se actualiza automáticamente gracias a @updatedAt en el schema
+      },
+      select: { // Seleccionamos solo los campos relevantes para la respuesta
+        id: true,
+        nombre: true,
+        serie: true,
+        estado: true,
+        updatedAt: true,
+      }
+    });
+
+    // 4. Respuesta exitosa
+    res.status(200).json({
+      message: `Estado del equipo ${id} actualizado a '${nuevoEstado}'`,
+      equipo: updatedEquipo
+    });
+
+  } catch (err) {
+    // Manejo de errores de Prisma (ej: equipo no encontrado)
+    if (err.code === 'P2025') {
+      return res.status(404).json({ error: `Equipo con ID ${req.params.id} no encontrado.` });
+    }
+    console.error("Error al actualizar el estado del equipo:", err);
+    res.status(500).json({ error: err.message || "Ocurrió un error en el servidor." });
   }
 };
 
@@ -305,7 +358,11 @@ exports.buscarequipos = async (req, res) => {
     const { nombre, serie, contrato, clienteNombre } = req.body;
 
     // Construye el objeto `where` dinámicamente según los parámetros proporcionados
-    const filtros = {estado: 'Activo'};
+    const filtros = {
+      estado: {
+        not: 'Inactivo'
+      }
+    };
 
     if (nombre) {
       filtros.nombre = { contains: nombre, mode: 'insensitive' }; // Busca equipos cuyo nombre contenga el texto (insensible a mayúsculas/minúsculas)
