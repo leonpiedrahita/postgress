@@ -59,7 +59,7 @@ exports.registrar = async (req, res) => {
         serie: req.body.nuevoequipo.serie,
         placaDeInventario: req.body.nuevoequipo.placaDeInventario,
         tipoDeContrato: req.body.nuevoequipo.tipoDeContrato,
-        estado: 'Activo',
+        estado: req.body.nuevoequipo.estado,
         ubicacionNombre: req.body.nuevoequipo.ubicacionNombre,
         ubicacionDireccion: req.body.nuevoequipo.ubicacionDireccion,
         proveedor: { connect: { id: req.body.nuevoequipo.proveedor.id } }, // Conecta al proveedor por ID
@@ -109,11 +109,12 @@ exports.actualizar = async (req, res) => {
       propietarioId,
       placaDeInventario,
       tipoDeContrato,
+      estado,
       proveedorId
     } = req.body;
 
     // Validación de campos obligatorios
-    if (!placaDeInventario || !tipoDeContrato || !ubicacionNombre || !ubicacionDireccion || !clienteId || !propietarioId || !proveedorId) {
+    if (!placaDeInventario || !tipoDeContrato || !ubicacionNombre || !ubicacionDireccion || !clienteId || !propietarioId || !proveedorId || !estado)  {
       return res.status(400).json({ error: "Todos los campos son obligatorios" });
     }
 
@@ -132,6 +133,7 @@ exports.actualizar = async (req, res) => {
           ubicacionDireccion,
           placaDeInventario,
           tipoDeContrato,
+          estado,
           cliente: { connect: { id: clienteId } },
           propietario: { connect: { id: propietarioId } },
           proveedor: { connect: { id: proveedorId } },
