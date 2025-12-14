@@ -15,6 +15,10 @@ router.get("/listar", auth.verificarAdmin, usuarioController.listar);
 // .com/api/usuario/registrar
 router.post("/registrar", auth.verificarAdmin, usuarioController.registrar);
 
+//
+
+router.patch("/actualizarcontrasena/:id", auth.verificarAdmin, usuarioController.actualizarContrasena);
+
 // .com/api/usuario/actualizar/:id
 router.patch("/actualizar/:id", auth.verificarAdmin, usuarioController.actualizar);
 

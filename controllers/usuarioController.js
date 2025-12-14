@@ -61,6 +61,55 @@ exports.registrar = async (req, res, next) => {
     next(err);
   }
 };
+exports.actualizarContrasena = async (req, res, next) => {
+    const prisma = req.prisma;
+    const { id } = req.params; // Asumiendo que el ID viene en la ruta, ej: /api/users/123/password
+    const { newPassword } = req.body;
+
+    // 1. Validaciones básicas
+    if (!newPassword || newPassword.length < 6) {
+        return res.status(400).json({ message: 'La nueva contraseña debe tener al menos 6 caracteres.' });
+    }
+
+    try {
+        // 2. Verificar si el usuario existe
+        const existingUser = await prisma.usuario.findUnique({
+            where: { id: parseInt(id) }, // Asegúrate de convertir el ID a entero si es un número
+        });
+
+        if (!existingUser) {
+            return res.status(404).json({ message: 'Usuario no encontrado' });
+        }
+
+        // 3. Generar el hash de la nueva contraseña
+        const hash = await bcrypt.hash(newPassword, 10);
+
+        // 4. Actualizar la contraseña en la base de datos
+        const usuarioActualizado = await prisma.usuario.update({
+            where: { id: existingUser.id }, // Usar el ID entero del usuario existente
+            data: {
+                password: hash, // Guardar el nuevo hash
+                // Puedes añadir un campo 'fechaActualizacionContrasena' si lo tienes en tu modelo
+            },
+            select: {
+                id: true,
+                nombre: true,
+                email: true,
+                rol: true,
+                // NO devolver el campo 'password'
+            }
+        });
+
+        // 5. Respuesta exitosa
+        res.status(200).json({ message: 'Contraseña actualizada exitosamente', usuario: usuarioActualizado });
+
+    } catch (err) {
+        console.error("Error al actualizar la contraseña:", err);
+        // Manejo de errores de Prisma u otros errores internos
+        res.status(500).json({ message: 'Error interno del servidor al actualizar la contraseña.' });
+        next(err);
+    }
+};
 
 exports.ingresar = async (req, res, next) => {
   const prisma = req.prisma;
