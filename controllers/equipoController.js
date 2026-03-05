@@ -393,7 +393,10 @@ exports.buscarequipos = async (req, res) => {
             },
           },
         },
-        orderBy: { id: 'desc' },
+        orderBy: [
+          { historialDeServicios: { _max: { fecha: 'desc' } } },
+          { id: 'desc' },
+        ],
       }),
       prisma.equipo.count({ where }),
     ]);
