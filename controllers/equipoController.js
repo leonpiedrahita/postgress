@@ -352,75 +352,85 @@ exports.listaruno = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-// Buscar equipos de manera dinámica (incluyendo búsqueda por nombre del propietario)
+// Buscar equipos con texto libre y paginación del servidor
 exports.buscarequipos = async (req, res) => {
   const prisma = req.prisma;
   try {
-    // Obtén los parámetros de búsqueda del cuerpo de la solicitud
-    const { nombre, serie, contrato, clienteNombre } = req.body;
+    const { texto, page = 1, limit = 20 } = req.body;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    // Construye el objeto `where` dinámicamente según los parámetros proporcionados
-    const filtros = {
-      estado: {
-        not: 'Inactivo'
-      }
-    };
+    const where = { estado: { not: 'Inactivo' } };
 
-    if (nombre) {
-      filtros.nombre = { contains: nombre, mode: 'insensitive' }; // Busca equipos cuyo nombre contenga el texto (insensible a mayúsculas/minúsculas)
+    if (texto && texto.trim()) {
+      const busqueda = { contains: texto.trim(), mode: 'insensitive' };
+      where.OR = [
+        { nombre: busqueda },
+        { serie: busqueda },
+        { cliente: { nombre: busqueda } },
+        { propietario: { nombre: busqueda } },
+        { ubicacionNombre: busqueda },
+        { tipoDeContrato: busqueda },
+        { estado: busqueda },
+      ];
     }
 
-    if (serie) {
-      filtros.serie = { equals: serie }; // Busca equipos por serie exacta
-    }
-
-    if (contrato) {
-      filtros.tipoDeContrato = { equals: contrato }; // Busca equipos por estado exacto
-    }
-
-    if (clienteNombre) {
-      // Filtro para buscar equipos por el nombre del propietario
-      filtros.cliente = {
-        nombre: { contains: clienteNombre, mode: 'insensitive' }, // Busca propietarios cuyo nombre contenga el texto
-      };
-    }
-
-    // Realiza la consulta con los filtros dinámicos
-    const equipos = await prisma.equipo.findMany({
-      where: filtros, // Aplica los filtros dinámicos
-      include: {
-        propietario: true, // Incluye información del propietario
-        cliente: true, // Incluye información del cliente
-        proveedor: true, // Incluye información del proveedor 
-        referencia: true, // Incluye información de la referencia
-        historialDeServicios: {
-          include: {
-            responsable: true, // Incluye información del responsable en el historial de servicios
-            reporte: true, // Incluye la identificación del reporte en el historial de servicios
-            equipo: true, // Incluye información del equipo en el historial de servicios
-            documentosSoporte: true
-
-          }, // Incluye los documentos de soporte en el historial de servicios
-
-        }, // Incluye el historial de servicios
-        documentosLegales: true, // Incluye documentos legales
-        historialPropietarios: {
-          include: {
-            cliente: true, // Incluye información del cliente en el historial
-            propietario: true, // Incluye información del propietario en el historial
-            proveedor: true, // Incluye información del proveedor en el historial 
-            /* responsable: true, // Incluye información del responsable en el historial */
+    const [equipos, total] = await Promise.all([
+      prisma.equipo.findMany({
+        where,
+        skip,
+        take: parseInt(limit),
+        include: {
+          propietario: { select: { id: true, nombre: true, nit: true } },
+          cliente: { select: { id: true, nombre: true, nit: true } },
+          proveedor: { select: { id: true, nombre: true, nit: true } },
+          referencia: { select: { id: true, periodicidadmantenimiento: true } },
+          documentosLegales: { select: { id: true } },
+          historialPropietarios: {
+            include: {
+              cliente: true,
+              propietario: true,
+              proveedor: true,
+            },
           },
         },
-      },
-    });
+        orderBy: { id: 'desc' },
+      }),
+      prisma.equipo.count({ where }),
+    ]);
 
-    // Responde con los equipos encontrados
-    res.status(200).json(equipos);
+    res.status(200).json({ equipos, total });
   } catch (err) {
-    // Manejo de errores
     console.error('Error al buscar equipos:', err);
     res.status(500).json({ error: 'Ocurrió un error al buscar los equipos.', detalles: err.message });
+  }
+};
+
+// Listar todos los equipos sin paginación (para exportar a Excel y Cronograma)
+exports.listarTodos = async (req, res) => {
+  const prisma = req.prisma;
+  try {
+    const equipos = await prisma.equipo.findMany({
+      where: { estado: { not: 'Inactivo' } },
+      select: {
+        nombre: true,
+        marca: true,
+        serie: true,
+        ubicacionNombre: true,
+        ubicacionDireccion: true,
+        estado: true,
+        tipoDeContrato: true,
+        fechaDePreventivo: true,
+        propietario: { select: { nombre: true } },
+        cliente: { select: { nombre: true } },
+        proveedor: { select: { nombre: true } },
+        referencia: { select: { periodicidadmantenimiento: true } },
+      },
+      orderBy: { id: 'desc' },
+    });
+    res.status(200).json(equipos);
+  } catch (err) {
+    console.error('Error al listar todos los equipos:', err);
+    res.status(500).json({ error: err.message });
   }
 };
 // Registrar un reporte externo

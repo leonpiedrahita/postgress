@@ -22,6 +22,7 @@ router.patch("/actualizarestado/:id",auth.verificarAdminSopCotBodLum,equipoContr
 router.get("/buscar",auth.verificarUsuario,equipoController.buscar);
 router.get("/listaruno/:id",auth.verificarUsuario,equipoController.listaruno);
 router.post("/buscarequipos",auth.verificarUsuario,equipoController.buscarequipos);
+router.get("/listartodos",auth.verificarUsuario,equipoController.listarTodos);
 router.patch("/actualizarcronograma",auth.verificarUsuario,equipoController.actualizarcronograma)
 
 module.exports = router;
