@@ -358,11 +358,14 @@ exports.buscarequipos = async (req, res) => {
   try {
     const { texto, page = 1, limit = 20 } = req.body;
     const skip = (parseInt(page) - 1) * parseInt(limit);
+    const take = parseInt(limit);
 
+    // WHERE para el count de Prisma
     const where = { estado: { not: 'Inactivo' } };
+    const textoFiltro = texto && texto.trim() ? texto.trim() : null;
 
-    if (texto && texto.trim()) {
-      const busqueda = { contains: texto.trim(), mode: 'insensitive' };
+    if (textoFiltro) {
+      const busqueda = { contains: textoFiltro, mode: 'insensitive' };
       where.OR = [
         { nombre: busqueda },
         { serie: busqueda },
@@ -374,11 +377,47 @@ exports.buscarequipos = async (req, res) => {
       ];
     }
 
-    const [equipos, total] = await Promise.all([
+    // IDs ordenados por fecha del último reporte de servicio
+    let idsResult;
+    if (textoFiltro) {
+      const like = `%${textoFiltro}%`;
+      idsResult = await prisma.$queryRaw`
+        SELECT e.id
+        FROM equipos e
+        LEFT JOIN historial_servicios hs ON hs."equipoId" = e.id
+        LEFT JOIN clientes c ON c.id = e."clienteId"
+        LEFT JOIN clientes p ON p.id = e."propietarioId"
+        WHERE e.estado != 'Inactivo'
+          AND (
+            e.nombre ILIKE ${like}
+            OR e.serie ILIKE ${like}
+            OR c.nombre ILIKE ${like}
+            OR p.nombre ILIKE ${like}
+            OR e."ubicacionNombre" ILIKE ${like}
+            OR e."tipoDeContrato" ILIKE ${like}
+            OR e.estado ILIKE ${like}
+          )
+        GROUP BY e.id
+        ORDER BY MAX(hs.fecha) DESC NULLS LAST, e.id DESC
+        LIMIT ${take} OFFSET ${skip}
+      `;
+    } else {
+      idsResult = await prisma.$queryRaw`
+        SELECT e.id
+        FROM equipos e
+        LEFT JOIN historial_servicios hs ON hs."equipoId" = e.id
+        WHERE e.estado != 'Inactivo'
+        GROUP BY e.id
+        ORDER BY MAX(hs.fecha) DESC NULLS LAST, e.id DESC
+        LIMIT ${take} OFFSET ${skip}
+      `;
+    }
+
+    const ids = idsResult.map(r => Number(r.id));
+
+    const [equiposRaw, total] = await Promise.all([
       prisma.equipo.findMany({
-        where,
-        skip,
-        take: parseInt(limit),
+        where: { id: { in: ids } },
         include: {
           propietario: { select: { id: true, nombre: true, nit: true } },
           cliente: { select: { id: true, nombre: true, nit: true } },
@@ -393,13 +432,12 @@ exports.buscarequipos = async (req, res) => {
             },
           },
         },
-        orderBy: [
-          { historialDeServicios: { _max: { fecha: 'desc' } } },
-          { id: 'desc' },
-        ],
       }),
       prisma.equipo.count({ where }),
     ]);
+
+    // Reordenar según el orden del raw query
+    const equipos = ids.map(id => equiposRaw.find(e => e.id === id)).filter(Boolean);
 
     res.status(200).json({ equipos, total });
   } catch (err) {
