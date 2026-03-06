@@ -3,8 +3,10 @@ const usuarioController = require('../../../controllers/usuarioController');
 const auth = require('../../middleware/auth');
 const attachPrisma = require('../../middleware/attachPrisma');
 
-// Ruta pública (no requiere token ni cliente Prisma)
+// Rutas públicas (no requieren token)
 router.post("/ingresar", usuarioController.ingresar);
+router.post("/refresh", usuarioController.refresh);
+router.post("/salir", usuarioController.salir);
 
 // A partir de aquí, se requiere token y se adjunta cliente Prisma
 router.use(attachPrisma);

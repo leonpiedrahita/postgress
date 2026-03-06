@@ -1,39 +1,21 @@
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-const checkToken = async (token) => {
-  let localID = null;
-  try {
-    const { id } = jwt.verify(token, process.env.JWT_KEY); // Decodificar el token
-    localID = id;
-  } catch {
-    return false;
-  }
-
-  // Buscar usuario activo en la base de datos
-  const user = await prisma.usuario.findFirst({
-    where: {
-      id: localID,
-      estado: 1,
-    },
-  });
-
-  if (user) {
-    const newToken = encode(user); // Generar un nuevo token
-    return newToken;
-  } else {
-    return false;
-  }
-};
-
 module.exports = {
-  encode: (user) => {
-    // Obtener el timestamp actual en segundos
-    const nowSeconds = Math.floor(Date.now() / 1000);
+  /**
+   * Genera un UUID aleatorio para usar como refresh token (valor plano para el cliente).
+   * El hash de este valor se almacena en BD.
+   */
+  generateRefreshToken: () => crypto.randomUUID(),
 
-    // Calcular la expiración sumando 1 hora (3600 segundos)
-    const exp = nowSeconds + (60 * 120); // 60 segundos * 120 minutos = 7200 segundos (2 horas)
+  /**
+   * Genera un access token JWT con expiración de 15 minutos.
+   */
+  encode: (user) => {
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    const exp = nowSeconds + 900; // 15 minutos
 
     const token = jwt.sign(
       {
@@ -42,7 +24,7 @@ module.exports = {
         rol: user.rol,
         email: user.email,
         estado: user.estado,
-        exp, // Vencimiento exacto en 2 horas
+        exp,
       },
       process.env.JWT_KEY
     );
@@ -50,14 +32,13 @@ module.exports = {
     return token;
   },
 
+  /**
+   * Verifica un access token JWT y retorna el usuario activo o 'token vencido' / false.
+   */
   decode: async (token) => {
     try {
       const decoded = jwt.verify(token, process.env.JWT_KEY);
 
-      // Expiración en UTC
-      console.log("Token válido hasta (UTC):", new Date(decoded.exp * 1000).toISOString());
-
-      // Buscar usuario activo en la base de datos
       const user = await prisma.usuario.findFirst({
         where: {
           id: decoded.id,
@@ -74,5 +55,4 @@ module.exports = {
       return false;
     }
   },
-
 };

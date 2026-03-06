@@ -112,7 +112,6 @@ exports.actualizarContrasena = async (req, res, next) => {
 };
 
 exports.ingresar = async (req, res, next) => {
-  const prisma = req.prisma;
   try {
     const usuario = await prismaBase.usuario.findUnique({
       where: { email: req.body.email },
@@ -132,16 +131,95 @@ exports.ingresar = async (req, res, next) => {
       return res.status(401).json({ message: 'Falló la autenticación' });
     }
 
-    const token = tokenServices.encode(usuario);
+    const accessToken = tokenServices.encode(usuario);
+    const refreshToken = tokenServices.generateRefreshToken();
+    const refreshTokenExp = new Date(Date.now() + 8 * 60 * 60 * 1000); // 8 horas desde ahora
+
+    await prismaBase.usuario.update({
+      where: { id: usuario.id },
+      data: {
+        refreshToken: await bcrypt.hash(refreshToken, 10),
+        refreshTokenExp,
+      },
+    });
 
     res.status(200).json({
       auth: true,
-      tokenReturn: token,
+      tokenReturn: accessToken,
+      refreshToken,
     });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
     next(err);
+  }
+};
+
+exports.refresh = async (req, res) => {
+  const { refreshToken } = req.body;
+
+  if (!refreshToken) {
+    return res.status(401).json({ message: 'Refresh token requerido' });
+  }
+
+  try {
+    // Busca usuarios activos con refresh token no expirado
+    const usuarios = await prismaBase.usuario.findMany({
+      where: {
+        estado: 1,
+        refreshTokenExp: { gt: new Date() },
+        refreshToken: { not: null },
+      },
+    });
+
+    // Compara el token recibido con el hash almacenado
+    let usuarioValido = null;
+    for (const u of usuarios) {
+      const coincide = await bcrypt.compare(refreshToken, u.refreshToken);
+      if (coincide) { usuarioValido = u; break; }
+    }
+
+    if (!usuarioValido) {
+      return res.status(401).json({ message: 'Refresh token inválido o expirado' });
+    }
+
+    // Emite nuevo access token (NO extiende la expiración del refresh token)
+    const accessToken = tokenServices.encode(usuarioValido);
+
+    res.status(200).json({ accessToken });
+  } catch (err) {
+    console.error('Error en refresh:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.salir = async (req, res) => {
+  const { refreshToken } = req.body;
+
+  if (!refreshToken) {
+    return res.status(200).json({ message: 'Sesión cerrada' });
+  }
+
+  try {
+    const usuarios = await prismaBase.usuario.findMany({
+      where: { refreshToken: { not: null } },
+    });
+
+    for (const u of usuarios) {
+      const coincide = await bcrypt.compare(refreshToken, u.refreshToken);
+      if (coincide) {
+        await prismaBase.usuario.update({
+          where: { id: u.id },
+          data: { refreshToken: null, refreshTokenExp: null },
+        });
+        break;
+      }
+    }
+
+    res.status(200).json({ message: 'Sesión cerrada' });
+  } catch (err) {
+    console.error('Error al cerrar sesión:', err);
+    res.status(500).json({ error: err.message });
   }
 };
 
