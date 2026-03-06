@@ -27,24 +27,34 @@ exports.listarIngresosAbiertos = async (req, res) => {
   const prisma = req.prisma; // Obtener el cliente Prisma del request
 
   try {
-    const ingresosAbiertos = await prisma.ingreso.findMany({
-      // 1. Filtrar por el estado "Abierto"
-      where: {
-        estado: 'Abierto',
-      },
-      // 2. Incluir las relaciones deseadas (Equipo, Cliente, Etapas)
+    // IDs ordenados por la etapa más reciente de cada ingreso abierto
+    const idsResult = await prisma.$queryRaw`
+      SELECT i.id
+      FROM ingresos i
+      LEFT JOIN etapas e ON e."ingresoId" = i.id
+      WHERE i.estado = 'Abierto'
+      GROUP BY i.id
+      ORDER BY MAX(e."createdAt") DESC NULLS LAST
+    `;
+    const ids = idsResult.map(r => Number(r.id));
+
+    const ingresosRaw = await prisma.ingreso.findMany({
+      where: { id: { in: ids } },
       include: {
         equipo: {
           include: {
-            cliente: true, // Incluye información del cliente relacionado
+            cliente: true,
           },
-        }, // Incluye información del equipo relacionado
-        etapas: true, // Incluir las etapas asociadas a cada ingreso
+        },
+        etapas: true,
       },
     });
 
+    // Reordenar según el orden del $queryRaw
+    const ingresosAbiertos = ids.map(id => ingresosRaw.find(i => i.id === id)).filter(Boolean);
+
     // 3. Enviar la respuesta
-    res.status(200).json(ingresosAbiertos.length > 0 ? ingresosAbiertos : []);
+    res.status(200).json(ingresosAbiertos);
   } catch (err) {
     // 4. Manejo de errores
     console.error(err);

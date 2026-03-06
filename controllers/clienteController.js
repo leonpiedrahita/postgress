@@ -12,6 +12,7 @@ exports.listar = async (req, res) => {
         },
         sedePrincipal: true,
       },
+      orderBy: { updatedAt: 'desc' },
     });
 
     res.status(200).json(clientes);
