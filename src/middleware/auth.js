@@ -24,7 +24,10 @@ const verificarRol = (rolesPermitidos) => {
 
     // Inyectar datos del usuario si lo necesitas más adelante
     req.usuario = {
-      nombre: validationResponse.nombre
+      id: validationResponse.id,
+      nombre: validationResponse.nombre,
+      email: validationResponse.email,
+      rol: validationResponse.rol,
     };
 
     next();

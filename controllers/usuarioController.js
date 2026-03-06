@@ -297,3 +297,29 @@ exports.buscarfirma = async (req, res) => {
     });
   }
 };
+
+exports.cambiarContrasena = async (req, res) => {
+  const prisma = req.prisma;
+  const { newPassword } = req.body;
+  const id = req.usuario.id;
+
+  const regexContrasena = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).{6,}$/;
+  if (!newPassword || !regexContrasena.test(newPassword)) {
+    return res.status(400).json({ message: 'La contraseña debe contener al menos una mayúscula, una minúscula, un número y un carácter especial.' });
+  }
+
+  try {
+    const usuario = await prisma.usuario.findUnique({ where: { id } });
+    if (!usuario) return res.status(404).json({ message: 'Usuario no encontrado' });
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await prisma.usuario.update({
+      where: { id },
+      data: { password: hashedPassword },
+    });
+
+    res.status(200).json({ message: 'Contraseña actualizada correctamente' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};

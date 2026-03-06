@@ -30,4 +30,7 @@ router.patch("/actualizarfirma", auth.verificarAdmin, usuarioController.actualiz
 // .com/api/firma/buscar
 router.get("/buscarfirma", auth.verificarUsuario, usuarioController.buscarfirma);
 
+// Cambiar contraseña del usuario autenticado
+router.patch("/cambiarcontrasena", auth.verificarUsuario, usuarioController.cambiarContrasena);
+
 module.exports = router;
