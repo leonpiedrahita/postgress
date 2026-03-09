@@ -96,6 +96,13 @@ describe('registrar', () => {
     );
     expect(res.status).toHaveBeenCalledWith(400);
   });
+
+  it('retorna 500 si Prisma lanza error', async () => {
+    mockPrisma.cliente.findUnique.mockRejectedValue(new Error('DB error'));
+    const res = mockRes();
+    await clienteController.registrar(mockReq({ body }), res);
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
 });
 
 // ─── actualizar ───────────────────────────────────────────────────────────────
@@ -143,6 +150,13 @@ describe('actualizar', () => {
     );
     expect(res.status).toHaveBeenCalledWith(400);
   });
+
+  it('retorna 500 si Prisma lanza error', async () => {
+    mockPrisma.cliente.findUnique.mockRejectedValue(new Error('DB error'));
+    const res = mockRes();
+    await clienteController.actualizar(mockReq({ params: { id: '1' }, body }), res);
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
 });
 
 // ─── agregarsede ──────────────────────────────────────────────────────────────
@@ -166,6 +180,16 @@ describe('agregarsede', () => {
     await clienteController.agregarsede(mockReq({ params: { id: '999' }, body: {} }), res);
     expect(res.status).toHaveBeenCalledWith(404);
   });
+
+  it('retorna 500 si Prisma lanza error', async () => {
+    mockPrisma.cliente.findUnique.mockRejectedValue(new Error('DB error'));
+    const res = mockRes();
+    await clienteController.agregarsede(
+      mockReq({ params: { id: '1' }, body: { ciudad: 'Cali', direccion: 'Av 1' } }),
+      res
+    );
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
 });
 
 // ─── eliminarsede ─────────────────────────────────────────────────────────────
@@ -188,5 +212,12 @@ describe('eliminarsede', () => {
     const res = mockRes();
     await clienteController.eliminarsede(mockReq({ body: { sedeId: 999 } }), res);
     expect(res.status).toHaveBeenCalledWith(404);
+  });
+
+  it('retorna 500 si Prisma lanza error', async () => {
+    mockPrisma.sede.findUnique.mockRejectedValue(new Error('DB error'));
+    const res = mockRes();
+    await clienteController.eliminarsede(mockReq({ body: { sedeId: 5 } }), res);
+    expect(res.status).toHaveBeenCalledWith(500);
   });
 });

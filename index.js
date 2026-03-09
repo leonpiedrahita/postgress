@@ -39,13 +39,13 @@ app.use((req, res, next) => {
     next();
 });
 
-// Configuración de Rate Limit
+// Rate limit general para la API (operaciones normales de usuario)
 const apiLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // Ventana de tiempo de 15 minutos
-    max: 100, // Límite de 100 solicitudes por IP por ventana
+    windowMs: 15 * 60 * 1000,
+    max: 500, // 500 req/15min por IP — suficiente para uso intensivo de búsqueda
     message: "Demasiadas solicitudes desde esta IP, intenta nuevamente después de 15 minutos.",
-    standardHeaders: true, // Devuelve información de límites en los encabezados `RateLimit-*`
-    legacyHeaders: false, // Desactiva los encabezados `X-RateLimit-*`
+    standardHeaders: true,
+    legacyHeaders: false,
 });
 
 // Aplicar Rate Limit solo a las rutas bajo "/api"
