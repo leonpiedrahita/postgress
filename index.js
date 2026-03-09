@@ -1,17 +1,18 @@
 const express = require("express");
 const morgan = require("morgan");
-const prisma = require('./src/prisma-client'); // Importa el cliente Prisma extendido
-const rateLimit = require("express-rate-limit"); // Importa express-rate-limit
+const helmet = require("helmet");
+const rateLimit = require("express-rate-limit");
 const app = express();
 const PORT = process.env.PORT || 5000;
-const apiRouter = require('./src/routes'); // Importo el index donde están las rutas
+const apiRouter = require('./src/routes');
 const cors = require("cors");
 
 const allowedOrigins = [
   'https://gomaint.vercel.app',
+  'http://localhost:5173',
   'http://localhost:3000',
-  'https://gomaint.com.co',        // Dominio principal en producción
-  'https://www.gomaint.com.co'     // También es común agregar el subdominio www
+  'https://gomaint.com.co',
+  'https://www.gomaint.com.co',
 ];
 
 app.use(cors({
@@ -25,19 +26,13 @@ app.use(cors({
   methods: ['GET', 'PATCH', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   credentials: true
 }));
+// Headers de seguridad HTTP
+app.use(helmet());
+
 // Middleware para parsear JSON y datos URL-encoded
 app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-// Middleware para inyectar el userId
-app.use((req, res, next) => {
-    // Supongamos que el usuario está autenticado y su información está en req.user
-    // Esto depende de cómo estés manejando la autenticación en tu proyecto
-/*     prisma.userId = req.user?.id || 'anonymous'; // Si no hay usuario, usa "anonymous"
- */    prisma.userId = "testUser"; // Valor temporal para pruebas
-    next();
-});
 
 // Configuración de Rate Limit
 const apiLimiter = rateLimit({

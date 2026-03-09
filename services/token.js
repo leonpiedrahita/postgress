@@ -6,9 +6,15 @@ const prisma = new PrismaClient();
 module.exports = {
   /**
    * Genera un UUID aleatorio para usar como refresh token (valor plano para el cliente).
-   * El hash de este valor se almacena en BD.
    */
   generateRefreshToken: () => crypto.randomUUID(),
+
+  /**
+   * Devuelve el hash SHA-256 de un refresh token para almacenamiento y búsqueda en BD.
+   * Los UUIDs tienen 122 bits de entropía — SHA-256 es suficiente y permite búsqueda O(1).
+   */
+  hashRefreshToken: (token) =>
+    crypto.createHash('sha256').update(token).digest('hex'),
 
   /**
    * Genera un access token JWT con expiración de 15 minutos.

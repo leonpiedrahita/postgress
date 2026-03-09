@@ -373,6 +373,11 @@ exports.agregarEtapa = async (req, res) => {
       nuevaEtapa,
       ingresoActualizado,
     });
+
+    // Notificación WhatsApp (no bloqueante)
+    const { notificarCambioEtapa } = require('../services/whatsappService');
+    notificarCambioEtapa(parseInt(ingresoId), { etapaActual, ubicacion, comentario, responsable }).catch(console.error);
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Ocurrió un error al agregar la etapa.', detalles: err.message });

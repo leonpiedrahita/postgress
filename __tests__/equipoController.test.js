@@ -1,3 +1,7 @@
+jest.mock('../services/whatsappService', () => ({
+  notificarEquipoDisponible: jest.fn().mockResolvedValue(null),
+}));
+
 const equipoController = require('../controllers/equipoController');
 
 jest.mock('../services/token');
@@ -174,6 +178,30 @@ describe('actualizarEstado', () => {
     await equipoController.actualizarEstado(req, res);
     expect(res.status).toHaveBeenCalledWith(404);
   });
+
+  it('dispara notificación WP cuando el estado es Disponible', async () => {
+    const { notificarEquipoDisponible } = require('../services/whatsappService');
+    mockPrisma.equipo.update.mockResolvedValue({ id: 1, estado: 'Disponible' });
+
+    const req = mockReq({ params: { id: '1' }, body: { nuevoEstado: 'Disponible' } });
+    const res = mockRes();
+    await equipoController.actualizarEstado(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(notificarEquipoDisponible).toHaveBeenCalledWith(1, 'Disponible');
+  });
+
+  it('no dispara notificación WP para estados que no aplican', async () => {
+    const { notificarEquipoDisponible } = require('../services/whatsappService');
+    mockPrisma.equipo.update.mockResolvedValue({ id: 1, estado: 'En soporte' });
+
+    const req = mockReq({ params: { id: '1' }, body: { nuevoEstado: 'En soporte' } });
+    const res = mockRes();
+    await equipoController.actualizarEstado(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(notificarEquipoDisponible).not.toHaveBeenCalled();
+  });
 });
 
 // ─── buscarequipos ────────────────────────────────────────────────────────────
@@ -254,6 +282,208 @@ describe('listarTodos', () => {
     mockPrisma.equipo.findMany.mockRejectedValue(new Error('DB error'));
     const res = mockRes();
     await equipoController.listarTodos(mockReq(), res);
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+// ─── actualizar (camino error 500) ────────────────────────────────────────────
+describe('actualizar — error 500', () => {
+  const body = {
+    ubicacionNombre: 'Planta', ubicacionDireccion: 'Cra 10',
+    clienteId: 3, propietarioId: 2, placaDeInventario: 'INV-01',
+    tipoDeContrato: 'Mantenimiento', estado: 'Activo', proveedorId: 1,
+  };
+
+  it('retorna 500 si la transacción lanza error', async () => {
+    tokenServices.decode.mockResolvedValue({ id: 10 });
+    mockPrisma.equipo.findUnique.mockResolvedValue({ id: 1 });
+    mockPrisma.$transaction.mockRejectedValue(new Error('DB error'));
+
+    const res = mockRes();
+    await equipoController.actualizar(mockReq({ params: { id: '1' }, body }), res);
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+// ─── actualizarEstado (camino error 500 genérico) ─────────────────────────────
+describe('actualizarEstado — error 500', () => {
+  it('retorna 500 si Prisma lanza error genérico', async () => {
+    mockPrisma.equipo.update.mockRejectedValue(new Error('Connection lost'));
+
+    const req = mockReq({ params: { id: '1' }, body: { nuevoEstado: 'Inactivo' } });
+    const res = mockRes();
+    await equipoController.actualizarEstado(req, res);
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+// ─── registrarreporte ─────────────────────────────────────────────────────────
+describe('registrarreporte', () => {
+  it('registra el reporte de servicio y retorna 201', async () => {
+    tokenServices.decode.mockResolvedValue({ id: 10 });
+    mockPrisma.historialServicio.create.mockResolvedValue({ id: 1 });
+
+    const req = mockReq({
+      body: { id_equipo: '5', reporte: { fechadefinalizacion: '2024-01-01', tipodeasistencia: 'Preventivo' } },
+      idcreada: 'REP-001',
+    });
+    const res = mockRes();
+    await equipoController.registrarreporte(req, res);
+
+    expect(mockPrisma.historialServicio.create).toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(201);
+  });
+
+  it('retorna 500 si Prisma lanza error', async () => {
+    tokenServices.decode.mockResolvedValue({ id: 10 });
+    mockPrisma.historialServicio.create.mockRejectedValue(new Error('DB error'));
+
+    const req = mockReq({
+      body: { id_equipo: '5', reporte: { fechadefinalizacion: '2024-01-01', tipodeasistencia: 'Preventivo' } },
+      idcreada: 'REP-001',
+    });
+    const res = mockRes();
+    await equipoController.registrarreporte(req, res);
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+// ─── registrarreporteexterno ──────────────────────────────────────────────────
+describe('registrarreporteexterno', () => {
+  it('registra el reporte externo y retorna 201', async () => {
+    tokenServices.decode.mockResolvedValue({ id: 10 });
+    mockPrisma.historialServicio.create.mockResolvedValue({ id: 2 });
+
+    const reporteData = { fechadefinalizacion: '2024-01-01', tipodeasistencia: 'Correctivo' };
+    const req = mockReq({
+      body: { id_equipo: '5', reporte: JSON.stringify(reporteData) },
+    });
+    const res = mockRes();
+    res.locals = { idcreada: 'REP-002', llave: 's3-key' };
+    await equipoController.registrarreporteexterno(req, res);
+
+    expect(mockPrisma.historialServicio.create).toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(201);
+  });
+
+  it('retorna 500 si Prisma lanza error', async () => {
+    tokenServices.decode.mockResolvedValue({ id: 10 });
+    mockPrisma.historialServicio.create.mockRejectedValue(new Error('DB error'));
+
+    const reporteData = { fechadefinalizacion: '2024-01-01', tipodeasistencia: 'Correctivo' };
+    const req = mockReq({
+      body: { id_equipo: '5', reporte: JSON.stringify(reporteData) },
+    });
+    const res = mockRes();
+    res.locals = { idcreada: 'REP-002', llave: 's3-key' };
+    await equipoController.registrarreporteexterno(req, res);
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+// ─── registrardocumento ───────────────────────────────────────────────────────
+describe('registrardocumento', () => {
+  it('registra el documento legal y retorna 201', async () => {
+    mockPrisma.documentoLegal.create.mockResolvedValue({ id: 1 });
+
+    const req = mockReq({
+      body: { id_equipo: '5', nombredocumento: JSON.stringify('Contrato.pdf') },
+    });
+    const res = mockRes();
+    res.locals = { llave: 's3-doc-key' };
+    await equipoController.registrardocumento(req, res);
+
+    expect(mockPrisma.documentoLegal.create).toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(201);
+  });
+
+  it('retorna 500 si Prisma lanza error', async () => {
+    mockPrisma.documentoLegal.create.mockRejectedValue(new Error('DB error'));
+
+    const req = mockReq({
+      body: { id_equipo: '5', nombredocumento: JSON.stringify('Contrato.pdf') },
+    });
+    const res = mockRes();
+    res.locals = { llave: 's3-doc-key' };
+    await equipoController.registrardocumento(req, res);
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+// ─── buscar ───────────────────────────────────────────────────────────────────
+describe('buscar', () => {
+  it('retorna 200 con los equipos encontrados', async () => {
+    const equipos = [{ id: 1, nombre: 'Bomba' }];
+    mockPrisma.equipo.findMany.mockResolvedValue(equipos);
+
+    const req = mockReq({ body: { buscar: { estado: 'Activo' } } });
+    const res = mockRes();
+    await equipoController.buscar(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(equipos);
+  });
+
+  it('retorna 500 si Prisma lanza error', async () => {
+    mockPrisma.equipo.findMany.mockRejectedValue(new Error('DB error'));
+
+    const res = mockRes();
+    await equipoController.buscar(mockReq({ body: { buscar: {} } }), res);
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+// ─── listaruno ────────────────────────────────────────────────────────────────
+describe('listaruno', () => {
+  it('retorna 200 con el equipo encontrado', async () => {
+    const equipo = { id: 1, nombre: 'Motor', propietario: {}, cliente: {} };
+    mockPrisma.equipo.findUnique.mockResolvedValue(equipo);
+
+    const res = mockRes();
+    await equipoController.listaruno(mockReq({ params: { id: '1' } }), res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(equipo);
+  });
+
+  it('retorna 404 si el equipo no existe', async () => {
+    mockPrisma.equipo.findUnique.mockResolvedValue(null);
+
+    const res = mockRes();
+    await equipoController.listaruno(mockReq({ params: { id: '999' } }), res);
+    expect(res.status).toHaveBeenCalledWith(404);
+  });
+
+  it('retorna 500 si Prisma lanza error', async () => {
+    mockPrisma.equipo.findUnique.mockRejectedValue(new Error('DB error'));
+
+    const res = mockRes();
+    await equipoController.listaruno(mockReq({ params: { id: '1' } }), res);
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+// ─── actualizarcronograma ─────────────────────────────────────────────────────
+describe('actualizarcronograma', () => {
+  it('actualiza la fecha de preventivo y retorna 200', async () => {
+    mockPrisma.equipo.update.mockResolvedValue({ id: 1, fechaDePreventivo: new Date('2024-06-01') });
+
+    const req = mockReq({ body: { id_equipo: '1', fechaDePreventivo: '2024-06-01' } });
+    const res = mockRes();
+    await equipoController.actualizarcronograma(req, res);
+
+    expect(mockPrisma.equipo.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 1 } })
+    );
+    expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  it('retorna 500 si Prisma lanza error', async () => {
+    mockPrisma.equipo.update.mockRejectedValue(new Error('DB error'));
+
+    const req = mockReq({ body: { id_equipo: '1', fechaDePreventivo: '2024-06-01' } });
+    const res = mockRes();
+    await equipoController.actualizarcronograma(req, res);
     expect(res.status).toHaveBeenCalledWith(500);
   });
 });
