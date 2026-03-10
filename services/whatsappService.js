@@ -214,7 +214,7 @@ const ESTADOS_DISPONIBLE = ['Disponible', 'Disp. Pdte. MP.'];
  * No envía si el equipo ya cambió a estado Disponible/Disp. Pdte. MP. (esa notificación ya se envió).
  * Usa la plantilla "gomaint_notificacion".
  * @param {number} ingresoId
- * @param {{ etapaActual: string, ubicacion: string, comentario: string, responsable: string }} datosEtapa
+ * @param {{ etapaFinalizada: string, etapaNueva: string, ubicacion: string, comentario: string, responsable: string }} datosEtapa
  * @returns {Promise<void>}
  */
 async function notificarCambioEtapa(ingresoId, datosEtapa) {
@@ -256,10 +256,10 @@ async function notificarCambioEtapa(ingresoId, datosEtapa) {
       {
         type: 'body',
         parameters: [
+          { type: 'text', text: `Etapa finalizada: ${datosEtapa.etapaFinalizada || 'N/A'}` },
           { type: 'text', text: equipo.cliente?.nombre || 'Sin cliente' },
-          { type: 'text', text: equipo.nombre },
-          { type: 'text', text: equipo.serie },
-          { type: 'text', text: datosEtapa.etapaActual },
+          { type: 'text', text: `${equipo.nombre} - ${equipo.serie}` },
+          { type: 'text', text: datosEtapa.etapaNueva || 'Sin etapa' },
           { type: 'text', text: datosEtapa.ubicacion || 'Sin ubicacion' },
           { type: 'text', text: datosEtapa.comentario || 'Sin observaciones' },
           { type: 'text', text: datosEtapa.responsable || 'Sin responsable' },

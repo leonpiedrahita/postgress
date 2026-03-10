@@ -376,7 +376,13 @@ exports.agregarEtapa = async (req, res) => {
 
     // Notificación WhatsApp (no bloqueante)
     const { notificarCambioEtapa } = require('../services/whatsappService');
-    notificarCambioEtapa(parseInt(ingresoId), { etapaActual, ubicacion, comentario, responsable }).catch(console.error);
+    notificarCambioEtapa(parseInt(ingresoId), {
+      etapaFinalizada: etapaMasReciente?.nombre || '',
+      etapaNueva: nombre,
+      ubicacion,
+      comentario,
+      responsable,
+    }).catch(console.error);
 
   } catch (err) {
     console.error(err);
