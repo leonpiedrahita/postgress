@@ -151,9 +151,11 @@ async function notificarIngresoEquipo(ingresoId) {
  * Usa la plantilla aprobada "gomaint_equipo_disponible".
  * @param {number} equipoId - ID del equipo cuyo estado cambió
  * @param {string} nuevoEstado - Nuevo estado del equipo
+ * @param {string} [observacion] - Observación de la etapa (opcional, se usa si se pasa directo)
+ * @param {string} [ubicacion] - Ubicación del equipo (opcional)
  * @returns {Promise<void>}
  */
-async function notificarEquipoDisponible(equipoId, nuevoEstado) {
+async function notificarEquipoDisponible(equipoId, nuevoEstado, observacion, ubicacion) {
   try {
     const equipo = await prisma.equipo.findUnique({
       where: { id: equipoId },
@@ -193,8 +195,8 @@ async function notificarEquipoDisponible(equipoId, nuevoEstado) {
         parameters: [
           { type: 'text', text: nuevoEstado },
           { type: 'text', text: `${equipo.nombre} - ${equipo.serie}` },
-          { type: 'text', text: ultimaEtapa?.ubicacion || 'Sin ubicacion' },
-          { type: 'text', text: ultimaEtapa?.comentario || 'Sin observaciones' },
+          { type: 'text', text: ubicacion || ultimaEtapa?.ubicacion || 'Sin ubicacion' },
+          { type: 'text', text: observacion || ultimaEtapa?.comentario || 'Sin observaciones' },
         ],
       },
     ];
@@ -256,9 +258,9 @@ async function notificarCambioEtapa(ingresoId, datosEtapa) {
       {
         type: 'body',
         parameters: [
-          { type: 'text', text: `Etapa finalizada: ${datosEtapa.etapaFinalizada || 'N/A'}` },
           { type: 'text', text: equipo.cliente?.nombre || 'Sin cliente' },
           { type: 'text', text: `${equipo.nombre} - ${equipo.serie}` },
+          { type: 'text', text: datosEtapa.etapaFinalizada || 'N/A' },
           { type: 'text', text: datosEtapa.etapaNueva || 'Sin etapa' },
           { type: 'text', text: datosEtapa.ubicacion || 'Sin ubicacion' },
           { type: 'text', text: datosEtapa.comentario || 'Sin observaciones' },

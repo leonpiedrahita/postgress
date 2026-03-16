@@ -52,10 +52,10 @@ async function main() {
     {
       type: 'body',
       parameters: [
-        { type: 'text', text: 'Etapa finalizada: Recepción' },             // {{1}} etapa cerrada
-        { type: 'text', text: 'Clínica Central' },                      // {{2}} cliente
-        { type: 'text', text: 'Monitor Multiparámetros - SN-TEST-001' }, // {{3}} equipo - serie
-        { type: 'text', text: 'Diagnóstico técnico' },                  // {{4}} etapa nueva
+        { type: 'text', text: 'Clínica Central' },                      // {{1}} cliente
+        { type: 'text', text: 'Monitor Multiparámetros - SN-TEST-001' }, // {{2}} equipo - serie
+        { type: 'text', text: 'Recepción' },                             // {{3}} etapa finalizada
+        { type: 'text', text: 'Diagnóstico técnico' },                  // {{4}} etapa iniciada
         { type: 'text', text: 'Taller electrónica' },                   // {{5}} ubicación
         { type: 'text', text: 'Revisión de tarjeta principal' },        // {{6}} comentario
         { type: 'text', text: 'Pedro Técnico' },                        // {{7}} responsable

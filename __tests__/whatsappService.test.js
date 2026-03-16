@@ -239,9 +239,9 @@ describe('notificarCambioEtapa', () => {
     const [, body] = axios.post.mock.calls[0];
     expect(body.template.name).toBe('gomaint_notificacion');
     const params = body.template.components[0].parameters;
-    expect(params[0].text).toBe('Etapa finalizada: Recepción');
-    expect(params[1].text).toBe('Hospital Norte');
-    expect(params[2].text).toBe('Desfibrilador - DF-007');
+    expect(params[0].text).toBe('Hospital Norte');
+    expect(params[1].text).toBe('Desfibrilador - DF-007');
+    expect(params[2].text).toBe('Recepción');
     expect(params[3].text).toBe('Diagnóstico');
     expect(params[4].text).toBe('Taller electrónica');
     expect(params[5].text).toBe('Revisión de PCB');
