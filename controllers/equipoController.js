@@ -201,13 +201,6 @@ exports.actualizarEstado = async (req, res) => {
       equipo: updatedEquipo
     });
 
-    // 5. Notificación WhatsApp (no bloqueante)
-    const ESTADOS_NOTIFICAR = ['Disponible', 'Disp. Pdte. MP.'];
-    if (ESTADOS_NOTIFICAR.includes(nuevoEstado)) {
-      const { notificarEquipoDisponible } = require('../services/whatsappService');
-      notificarEquipoDisponible(id, nuevoEstado).catch(console.error);
-    }
-
   } catch (err) {
     // Manejo de errores de Prisma (ej: equipo no encontrado)
     if (err.code === 'P2025') {

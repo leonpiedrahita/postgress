@@ -290,6 +290,7 @@ exports.agregarEtapa = async (req, res) => {
       etapaActual,
       ultimaEtapa,
       estado,
+      nuevoestadoequipo,
     } = req.body; // Obtener los datos de la nueva etapa desde el body
 
     // Validar que el ingresoId es un número válido
@@ -375,10 +376,11 @@ exports.agregarEtapa = async (req, res) => {
     });
 
     // Notificación WhatsApp (no bloqueante)
-    const ESTADOS_DISPONIBLE = ['Disponible', 'Disp. Pdte. MP.'];
-    if (ESTADOS_DISPONIBLE.includes(nombre)) {
+    const ESTADOS_DISPONIBLE = ['En servicio', 'Disponible', 'Disp. Pdte. MP.'];
+    const estadoFinalEquipo = nuevoestadoequipo || nombre;
+    if (ESTADOS_DISPONIBLE.includes(estadoFinalEquipo)) {
       const { notificarEquipoDisponible } = require('../services/whatsappService');
-      notificarEquipoDisponible(ingreso.equipoId, nombre, comentario, ubicacion).catch(console.error);
+      notificarEquipoDisponible(ingreso.equipoId, estadoFinalEquipo, comentario, ubicacion).catch(console.error);
     } else {
       const { notificarCambioEtapa } = require('../services/whatsappService');
       notificarCambioEtapa(parseInt(ingresoId), {

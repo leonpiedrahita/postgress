@@ -209,7 +209,7 @@ async function notificarEquipoDisponible(equipoId, nuevoEstado, observacion, ubi
   }
 }
 
-const ESTADOS_DISPONIBLE = ['Disponible', 'Disp. Pdte. MP.'];
+const ESTADOS_DISPONIBLE = ['En servicio', 'Disponible', 'Disp. Pdte. MP.'];
 
 /**
  * Notifica el avance de etapa en un ingreso.
