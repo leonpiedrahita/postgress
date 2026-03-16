@@ -34,8 +34,10 @@ model Usuario {
   rol       String?
   estado    Int      @default(1)
   firma           String?
-  refreshToken    String?   // Hash del refresh token activo
-  refreshTokenExp DateTime? // Expiración del refresh token (8h desde login)
+  telefono          String?   // Número de teléfono del usuario
+  refreshToken      String?   // Hash del refresh token activo
+  refreshTokenExp   DateTime? // Expiración del refresh token (2h, se renueva con cada refresh)
+  refreshTokenCount Int       @default(0) // Nº de veces que se ha renovado (máx 3)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

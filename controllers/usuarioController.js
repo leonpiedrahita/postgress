@@ -133,13 +133,14 @@ exports.ingresar = async (req, res, next) => {
 
     const accessToken = tokenServices.encode(usuario);
     const refreshToken = tokenServices.generateRefreshToken();
-    const refreshTokenExp = new Date(Date.now() + 8 * 60 * 60 * 1000); // 8 horas desde ahora
+    const refreshTokenExp = new Date(Date.now() + 4 * 60 * 60 * 1000); // 4 horas (2h margen tras vencer el access token)
 
     await prismaBase.usuario.update({
       where: { id: usuario.id },
       data: {
         refreshToken: await bcrypt.hash(refreshToken, 10),
         refreshTokenExp,
+        refreshTokenCount: 0,
       },
     });
 
@@ -163,12 +164,13 @@ exports.refresh = async (req, res) => {
   }
 
   try {
-    // Busca usuarios activos con refresh token no expirado
+    // Busca usuarios activos con refresh token no expirado y con renovaciones disponibles
     const usuarios = await prismaBase.usuario.findMany({
       where: {
         estado: 1,
         refreshTokenExp: { gt: new Date() },
         refreshToken: { not: null },
+        refreshTokenCount: { lt: 3 },
       },
     });
 
@@ -180,11 +182,20 @@ exports.refresh = async (req, res) => {
     }
 
     if (!usuarioValido) {
-      return res.status(401).json({ message: 'Refresh token inválido o expirado' });
+      return res.status(401).json({ message: 'Refresh token inválido, expirado o límite de renovaciones alcanzado' });
     }
 
-    // Emite nuevo access token (NO extiende la expiración del refresh token)
+    // Emite nuevo access token, renueva la ventana 2h e incrementa el contador
     const accessToken = tokenServices.encode(usuarioValido);
+    const nuevaExp = new Date(Date.now() + 4 * 60 * 60 * 1000); // 4 horas desde el último refresh
+
+    await prismaBase.usuario.update({
+      where: { id: usuarioValido.id },
+      data: {
+        refreshTokenExp: nuevaExp,
+        refreshTokenCount: { increment: 1 },
+      },
+    });
 
     res.status(200).json({ accessToken });
   } catch (err) {

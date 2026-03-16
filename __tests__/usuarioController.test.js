@@ -59,7 +59,7 @@ beforeEach(() => jest.clearAllMocks());
 
 // ─── ingresar ─────────────────────────────────────────────────────────────────
 describe('ingresar', () => {
-  it('retorna 200 con token si credenciales son correctas', async () => {
+  it('retorna 200 con token si credenciales son correctas y resetea el contador', async () => {
     const usuario = { id: 1, email: 'test@test.com', password: 'hash', estado: 1, rol: 'administrador', nombre: 'Leo' };
     mockPrismaBase.usuario.findUnique.mockResolvedValue(usuario);
     mockPrismaBase.usuario.update.mockResolvedValue(usuario);
@@ -75,6 +75,9 @@ describe('ingresar', () => {
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({ auth: true, tokenReturn: 'jwt-token', refreshToken: 'raw-refresh-token' })
+    );
+    expect(mockPrismaBase.usuario.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ refreshTokenCount: 0 }) })
     );
   });
 
@@ -246,9 +249,14 @@ describe('refresh', () => {
     expect(res.status).toHaveBeenCalledWith(401);
   });
 
-  it('retorna 200 con nuevo accessToken si el token es válido', async () => {
-    const usuario = { id: 1, nombre: 'Leo', rol: 'administrador', estado: 1, refreshToken: 'hash', refreshTokenExp: new Date(Date.now() + 3600000) };
+  it('retorna 200 con nuevo accessToken, renueva ventana e incrementa contador', async () => {
+    const usuario = {
+      id: 1, nombre: 'Leo', rol: 'administrador', estado: 1,
+      refreshToken: 'hash', refreshTokenExp: new Date(Date.now() + 3600000),
+      refreshTokenCount: 1,
+    };
     mockPrismaBase.usuario.findMany.mockResolvedValue([usuario]);
+    mockPrismaBase.usuario.update.mockResolvedValue({});
     bcrypt.compare.mockResolvedValue(true);
     tokenServices.encode.mockReturnValue('nuevo-access-token');
 
@@ -257,10 +265,25 @@ describe('refresh', () => {
 
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({ accessToken: 'nuevo-access-token' });
+    expect(mockPrismaBase.usuario.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 1 },
+        data: expect.objectContaining({ refreshTokenCount: { increment: 1 } }),
+      })
+    );
+  });
+
+  it('retorna 401 si el contador llegó a 3 (no aparece en findMany)', async () => {
+    // El filtro refreshTokenCount: { lt: 3 } excluye al usuario, findMany retorna []
+    mockPrismaBase.usuario.findMany.mockResolvedValue([]);
+
+    const res = mockRes();
+    await usuarioController.refresh(mockReq({ body: { refreshToken: 'raw-token' } }), res);
+    expect(res.status).toHaveBeenCalledWith(401);
   });
 
   it('retorna 401 si el token no coincide con ningún usuario', async () => {
-    mockPrismaBase.usuario.findMany.mockResolvedValue([{ id: 1, refreshToken: 'hash' }]);
+    mockPrismaBase.usuario.findMany.mockResolvedValue([{ id: 1, refreshToken: 'hash', refreshTokenCount: 0 }]);
     bcrypt.compare.mockResolvedValue(false);
 
     const res = mockRes();

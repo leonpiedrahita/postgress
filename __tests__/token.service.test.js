@@ -40,9 +40,9 @@ describe('encode', () => {
     const decoded = jwt.verify(token, process.env.JWT_KEY);
     const diferencia = decoded.exp - antes;
 
-    // Entre 895 y 905 segundos (15 minutos ± 5s)
-    expect(diferencia).toBeGreaterThanOrEqual(895);
-    expect(diferencia).toBeLessThanOrEqual(905);
+    // Entre 7195 y 7205 segundos (2 horas ± 5s)
+    expect(diferencia).toBeGreaterThanOrEqual(7195);
+    expect(diferencia).toBeLessThanOrEqual(7205);
   });
 });
 

@@ -11,11 +11,11 @@ module.exports = {
   generateRefreshToken: () => crypto.randomUUID(),
 
   /**
-   * Genera un access token JWT con expiración de 15 minutos.
+   * Genera un access token JWT con expiración de 2 horas.
    */
   encode: (user) => {
     const nowSeconds = Math.floor(Date.now() / 1000);
-    const exp = nowSeconds + 900; // 15 minutos
+    const exp = nowSeconds + 7200; // 2 horas
 
     const token = jwt.sign(
       {
