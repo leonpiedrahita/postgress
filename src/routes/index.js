@@ -16,9 +16,9 @@ const reporteRouter = require('./api/reporteRoute');
 
 const s3Router = require('./api/s3Route');
 
- const ordenRouter = require('./api/ingresoRoute'); 
+ const ordenRouter = require('./api/ingresoRoute');
 
- 
+const whatsappRouter = require('./api/whatsappRoute');
 
 
 //Asocio el siguiente slash a api
@@ -37,7 +37,7 @@ router.use("/s3", s3Router);//api/s3
 
  router.use("/ingreso", ordenRouter);//api/ingreso
 
-
+router.use("/whatsapp", whatsappRouter);//api/whatsapp/webhook
 
 
 module.exports = router;

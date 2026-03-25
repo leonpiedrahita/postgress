@@ -195,7 +195,14 @@ exports.actualizarEstado = async (req, res) => {
       }
     });
 
-    // 4. Respuesta exitosa
+    // 4. Notificación WhatsApp si el equipo queda disponible
+    const ESTADOS_DISPONIBLE = ['En servicio', 'Disponible', 'Disp. Pdte. MP.'];
+    if (ESTADOS_DISPONIBLE.includes(nuevoEstado)) {
+      const { notificarEquipoDisponible } = require('../services/whatsappService');
+      notificarEquipoDisponible(id, nuevoEstado).catch(console.error);
+    }
+
+    // 5. Respuesta exitosa
     res.status(200).json({
       message: `Estado del equipo ${id} actualizado a '${nuevoEstado}'`,
       equipo: updatedEquipo
