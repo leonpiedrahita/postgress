@@ -34,7 +34,7 @@ describe('encode', () => {
     expect(decoded.estado).toBe(user.estado);
   });
 
-  it('el token expira aproximadamente en 2 horas', () => {
+  it('el token expira aproximadamente en 15 minutos', () => {
     const antes = Math.floor(Date.now() / 1000);
     const token = tokenService.encode(user);
     const decoded = jwt.verify(token, process.env.JWT_KEY);
@@ -79,5 +79,24 @@ describe('decode', () => {
 
     const resultado = await tokenService.decode(token);
     expect(resultado).toBe(false);
+  });
+});
+
+// ─── hashRefreshToken ─────────────────────────────────────────────────────────
+describe('hashRefreshToken', () => {
+  it('devuelve un string hexadecimal de 64 caracteres (SHA-256)', () => {
+    const hash = tokenService.hashRefreshToken('any-uuid');
+    expect(hash).toMatch(/^[a-f0-9]{64}$/);
+  });
+
+  it('el mismo input siempre produce el mismo hash (determinista)', () => {
+    const uuid = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+    expect(tokenService.hashRefreshToken(uuid)).toBe(tokenService.hashRefreshToken(uuid));
+  });
+
+  it('inputs distintos producen hashes distintos', () => {
+    const h1 = tokenService.hashRefreshToken('uuid-uno');
+    const h2 = tokenService.hashRefreshToken('uuid-dos');
+    expect(h1).not.toBe(h2);
   });
 });

@@ -221,3 +221,51 @@ describe('eliminarsede', () => {
     expect(res.status).toHaveBeenCalledWith(500);
   });
 });
+
+// ─── caminos error 500 ────────────────────────────────────────────────────────
+describe('registrar — error 500', () => {
+  it('retorna 500 si Prisma lanza error al crear', async () => {
+    mockPrisma.cliente.findUnique.mockResolvedValue(null);
+    mockPrisma.cliente.create.mockRejectedValue(new Error('DB error'));
+
+    const res = mockRes();
+    await clienteController.registrar(
+      mockReq({ body: { nombre: 'X', nit: '999', sedePrincipal: { ciudad: 'Bogotá', direccion: 'Calle 1' } } }),
+      res
+    );
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+describe('actualizar — error 500', () => {
+  it('retorna 500 si Prisma lanza error al actualizar', async () => {
+    mockPrisma.cliente.findUnique
+      .mockResolvedValueOnce({ id: 1, nit: '111' })
+      .mockResolvedValueOnce(null);
+    mockPrisma.sede.create.mockRejectedValue(new Error('DB error'));
+
+    const res = mockRes();
+    await clienteController.actualizar(
+      mockReq({
+        params: { id: '1' },
+        body: { nombre: 'Y', nit: '222', sedePrincipal: { ciudad: 'Cali', direccion: 'Av 1' } },
+      }),
+      res
+    );
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+describe('agregarsede — error 500', () => {
+  it('retorna 500 si Prisma lanza error al crear sede', async () => {
+    mockPrisma.cliente.findUnique.mockResolvedValue({ id: 1 });
+    mockPrisma.sede.create.mockRejectedValue(new Error('DB error'));
+
+    const res = mockRes();
+    await clienteController.agregarsede(
+      mockReq({ params: { id: '1' }, body: { ciudad: 'Cali', direccion: 'Av 1' } }),
+      res
+    );
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});

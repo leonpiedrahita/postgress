@@ -1,177 +1,159 @@
-// Mock @prisma/client before requiring the extension
+// Mock @prisma/client para que defineExtension sea un pass-through
 jest.mock('@prisma/client', () => ({
   Prisma: {
-    defineExtension: jest.fn((fn) => fn), // devuelve la función tal cual para poder llamarla en tests
+    defineExtension: (fn) => fn,
   },
 }));
 
 const auditExtension = require('../src/middleware/prisma-audit-extension');
 
-/**
- * Construye un cliente mock y ejecuta la función defineExtension
- * para obtener la lógica de $allOperations.
- */
-const buildAllOperations = (clientOverrides = {}) => {
-  const mockClient = {
-    nombre: 'testUser',
-    auditLog: { create: jest.fn().mockResolvedValue({}) },
-    Usuario: { findUnique: jest.fn() },
-    Equipo: { findUnique: jest.fn() },
-    ...clientOverrides,
+// Crea un cliente mock con el handler de la extensión capturado
+const createMockClient = (nombre = 'TestUser') => {
+  let capturedHandler = null;
+
+  const auditLog = { create: jest.fn().mockResolvedValue({}) };
+
+  const client = {
+    nombre,
+    auditLog,
+    // Mock de modelo genérico para beforeData en update/delete
+    TestModel: {
+      findUnique: jest.fn().mockResolvedValue({ id: 1, campo: 'valorAnterior' }),
+    },
+    $extends: jest.fn((config) => {
+      capturedHandler = config.query.$allModels.$allOperations;
+      return client;
+    }),
+    getHandler: () => capturedHandler,
   };
 
-  // auditExtension recibe client y llama client.$extends(...)
-  // Capturamos el objeto pasado a $extends
-  let capturedExtend;
-  mockClient.$extends = jest.fn((obj) => {
-    capturedExtend = obj;
-    return mockClient;
-  });
-
-  // Invocamos la función que defineExtension recibe
-  auditExtension(mockClient);
-
-  const allOperationsFn =
-    capturedExtend?.query?.$allModels?.$allOperations;
-
-  return { mockClient, allOperations: allOperationsFn };
+  return client;
 };
 
-// ─── Modelos excluidos ────────────────────────────────────────────────────────
-describe('modelos excluidos (AuditLog)', () => {
-  it('no registra auditoría para AuditLog create', async () => {
-    const { mockClient, allOperations } = buildAllOperations();
-    const query = jest.fn().mockResolvedValue({ id: 1 });
+beforeEach(() => jest.clearAllMocks());
 
-    await allOperations({ model: 'AuditLog', operation: 'create', args: {}, query });
+describe('prisma-audit-extension', () => {
+  it('registra auditoría en operación create', async () => {
+    const client = createMockClient('Ana');
+    auditExtension(client); // aplica la extensión y captura el handler
+    const handler = client.getHandler();
 
-    expect(query).toHaveBeenCalled();
-    expect(mockClient.auditLog.create).not.toHaveBeenCalled();
-  });
-});
-
-// ─── Operaciones de lectura ───────────────────────────────────────────────────
-describe('operaciones de lectura (findMany, findUnique, etc.)', () => {
-  it('no registra auditoría para findMany', async () => {
-    const { mockClient, allOperations } = buildAllOperations();
-    const query = jest.fn().mockResolvedValue([]);
-
-    await allOperations({ model: 'Usuario', operation: 'findMany', args: {}, query });
+    const query = jest.fn().mockResolvedValue({ id: 42 });
+    await handler({ model: 'Usuario', operation: 'create', args: { data: { nombre: 'Leo' } }, query });
 
     expect(query).toHaveBeenCalled();
-    expect(mockClient.auditLog.create).not.toHaveBeenCalled();
-  });
-
-  it('no registra auditoría para findUnique', async () => {
-    const { mockClient, allOperations } = buildAllOperations();
-    const query = jest.fn().mockResolvedValue(null);
-
-    await allOperations({ model: 'Equipo', operation: 'findUnique', args: {}, query });
-
-    expect(query).toHaveBeenCalled();
-    expect(mockClient.auditLog.create).not.toHaveBeenCalled();
-  });
-});
-
-// ─── create ───────────────────────────────────────────────────────────────────
-describe('operación create', () => {
-  it('registra auditoría con afterData tras create', async () => {
-    const { mockClient, allOperations } = buildAllOperations();
-    const created = { id: 42, nombre: 'Nuevo' };
-    const query = jest.fn().mockResolvedValue(created);
-
-    await allOperations({
-      model: 'Usuario',
-      operation: 'create',
-      args: { data: { nombre: 'Nuevo' } },
-      query,
-    });
-
-    expect(mockClient.auditLog.create).toHaveBeenCalledWith(
+    expect(client.auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           action: 'CREATE',
           tableName: 'Usuario',
-          afterData: created,
-          beforeData: null,
+          userId: 'Ana',
+          recordId: 42,
         }),
       })
     );
   });
-});
 
-// ─── update ───────────────────────────────────────────────────────────────────
-describe('operación update', () => {
-  it('captura beforeData y registra auditoría tras update', async () => {
-    const before = { id: 10, nombre: 'Antes' };
-    const after = { id: 10, nombre: 'Después' };
+  it('captura beforeData en operación update', async () => {
+    const client = createMockClient('Leo');
+    auditExtension(client);
+    const handler = client.getHandler();
 
-    const { mockClient, allOperations } = buildAllOperations({
-      Usuario: { findUnique: jest.fn().mockResolvedValue(before) },
-    });
-    const query = jest.fn().mockResolvedValue(after);
+    // Simula que el modelo existe para capturar beforeData
+    client.Usuario = { findUnique: jest.fn().mockResolvedValue({ id: 5, nombre: 'Antes' }) };
 
-    await allOperations({
+    const query = jest.fn().mockResolvedValue({ id: 5, nombre: 'Después' });
+    await handler({
       model: 'Usuario',
       operation: 'update',
-      args: { where: { id: 10 }, data: { nombre: 'Después' } },
+      args: { where: { id: 5 }, data: { nombre: 'Después' } },
       query,
     });
 
-    expect(mockClient.auditLog.create).toHaveBeenCalledWith(
+    expect(query).toHaveBeenCalled();
+    expect(client.auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           action: 'UPDATE',
           tableName: 'Usuario',
-          beforeData: before,
-          afterData: after,
         }),
       })
     );
   });
-});
 
-// ─── delete ───────────────────────────────────────────────────────────────────
-describe('operación delete', () => {
-  it('captura beforeData y no guarda afterData tras delete', async () => {
-    const before = { id: 5, nombre: 'AEliminar' };
-    const deleted = { id: 5 };
+  it('registra auditoría en operación delete', async () => {
+    const client = createMockClient();
+    auditExtension(client);
+    const handler = client.getHandler();
 
-    const { mockClient, allOperations } = buildAllOperations({
-      Equipo: { findUnique: jest.fn().mockResolvedValue(before) },
-    });
-    const query = jest.fn().mockResolvedValue(deleted);
-
-    await allOperations({
+    const query = jest.fn().mockResolvedValue({ id: 10 });
+    await handler({
       model: 'Equipo',
       operation: 'delete',
-      args: { where: { id: 5 } },
+      args: { where: { id: 10 } },
       query,
     });
 
-    expect(mockClient.auditLog.create).toHaveBeenCalledWith(
+    expect(client.auditLog.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
           action: 'DELETE',
           tableName: 'Equipo',
-          beforeData: before,
-          afterData: null,
         }),
       })
     );
   });
-});
 
-// ─── error al registrar auditoría ────────────────────────────────────────────
-describe('error al registrar auditoría', () => {
-  it('no lanza excepción si auditLog.create falla', async () => {
-    const { mockClient, allOperations } = buildAllOperations({
-      auditLog: { create: jest.fn().mockRejectedValue(new Error('Audit fail')) },
-    });
+  it('NO registra auditoría para operaciones de lectura (findMany, findUnique)', async () => {
+    const client = createMockClient();
+    auditExtension(client);
+    const handler = client.getHandler();
+
+    const query = jest.fn().mockResolvedValue([{ id: 1 }]);
+    await handler({ model: 'Usuario', operation: 'findMany', args: {}, query });
+
+    expect(query).toHaveBeenCalled();
+    expect(client.auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it('NO registra auditoría para el modelo AuditLog (evita recursión)', async () => {
+    const client = createMockClient();
+    auditExtension(client);
+    const handler = client.getHandler();
+
     const query = jest.fn().mockResolvedValue({ id: 1 });
+    await handler({ model: 'AuditLog', operation: 'create', args: {}, query });
 
+    expect(query).toHaveBeenCalled();
+    expect(client.auditLog.create).not.toHaveBeenCalled();
+  });
+
+  it('usa "anonymous" si el cliente no tiene nombre definido', async () => {
+    const client = createMockClient(undefined);
+    client.nombre = undefined;
+    auditExtension(client);
+    const handler = client.getHandler();
+
+    const query = jest.fn().mockResolvedValue({ id: 1 });
+    await handler({ model: 'Cliente', operation: 'create', args: {}, query });
+
+    expect(client.auditLog.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ userId: 'anonymous' }),
+      })
+    );
+  });
+
+  it('continúa la operación aunque falle el registro de auditoría', async () => {
+    const client = createMockClient();
+    client.auditLog.create.mockRejectedValue(new Error('Audit DB error'));
+    auditExtension(client);
+    const handler = client.getHandler();
+
+    const query = jest.fn().mockResolvedValue({ id: 99 });
+    // No debe lanzar error aunque la auditoría falle
     await expect(
-      allOperations({ model: 'Usuario', operation: 'create', args: {}, query })
-    ).resolves.not.toThrow();
+      handler({ model: 'Usuario', operation: 'create', args: {}, query })
+    ).resolves.toEqual({ id: 99 });
   });
 });

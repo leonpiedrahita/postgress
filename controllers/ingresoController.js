@@ -262,6 +262,10 @@ exports.registrarIngreso = async (req, res) => {
 
     // Enviar la respuesta con el ingreso creado
     res.status(201).json(nuevoIngreso);
+
+    // Notificación WhatsApp (no bloqueante — no afecta la respuesta al cliente)
+    const { notificarIngresoEquipo } = require('../services/whatsappService');
+    notificarIngresoEquipo(nuevoIngreso.id).catch(console.error);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Ocurrió un error al registrar el ingreso.', detalles: err.message });
@@ -286,6 +290,7 @@ exports.agregarEtapa = async (req, res) => {
       etapaActual,
       ultimaEtapa,
       estado,
+      nuevoestadoequipo,
     } = req.body; // Obtener los datos de la nueva etapa desde el body
 
     // Validar que el ingresoId es un número válido
@@ -369,6 +374,24 @@ exports.agregarEtapa = async (req, res) => {
       nuevaEtapa,
       ingresoActualizado,
     });
+
+    // Notificación WhatsApp (no bloqueante)
+    const ESTADOS_DISPONIBLE = ['En servicio', 'Disponible', 'Disp. Pdte. MP.'];
+    const estadoFinalEquipo = nuevoestadoequipo || nombre;
+    if (ESTADOS_DISPONIBLE.includes(estadoFinalEquipo)) {
+      const { notificarEquipoDisponible } = require('../services/whatsappService');
+      notificarEquipoDisponible(ingreso.equipoId, estadoFinalEquipo, comentario, ubicacion).catch(console.error);
+    } else {
+      const { notificarCambioEtapa } = require('../services/whatsappService');
+      notificarCambioEtapa(parseInt(ingresoId), {
+        etapaFinalizada: etapaMasReciente?.nombre || '',
+        etapaNueva: nombre,
+        ubicacion,
+        comentario,
+        responsable,
+      }).catch(console.error);
+    }
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Ocurrió un error al agregar la etapa.', detalles: err.message });

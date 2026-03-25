@@ -1,3 +1,7 @@
+jest.mock('../services/whatsappService', () => ({
+  notificarEquipoDisponible: jest.fn().mockResolvedValue(null),
+}));
+
 const equipoController = require('../controllers/equipoController');
 
 jest.mock('../services/token');
@@ -173,6 +177,30 @@ describe('actualizarEstado', () => {
     const res = mockRes();
     await equipoController.actualizarEstado(req, res);
     expect(res.status).toHaveBeenCalledWith(404);
+  });
+
+  it('dispara notificación WP cuando el estado es Disponible', async () => {
+    const { notificarEquipoDisponible } = require('../services/whatsappService');
+    mockPrisma.equipo.update.mockResolvedValue({ id: 1, estado: 'Disponible' });
+
+    const req = mockReq({ params: { id: '1' }, body: { nuevoEstado: 'Disponible' } });
+    const res = mockRes();
+    await equipoController.actualizarEstado(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(notificarEquipoDisponible).toHaveBeenCalledWith(1, 'Disponible');
+  });
+
+  it('no dispara notificación WP para estados que no aplican', async () => {
+    const { notificarEquipoDisponible } = require('../services/whatsappService');
+    mockPrisma.equipo.update.mockResolvedValue({ id: 1, estado: 'En soporte' });
+
+    const req = mockReq({ params: { id: '1' }, body: { nuevoEstado: 'En soporte' } });
+    const res = mockRes();
+    await equipoController.actualizarEstado(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(notificarEquipoDisponible).not.toHaveBeenCalled();
   });
 });
 
@@ -455,4 +483,4 @@ describe('listarTodos', () => {
     await equipoController.listarTodos(mockReq(), res);
     expect(res.status).toHaveBeenCalledWith(500);
   });
-});
+});

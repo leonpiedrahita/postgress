@@ -1,9 +1,6 @@
 const bcrypt = require("bcryptjs");
 const tokenServices = require('../services/token');
-const { getPrismaWithUser } = require('../src/prisma-client');
-const { PrismaClient } = require('@prisma/client');
-
-const prismaBase = new PrismaClient(); // Cliente sin extensiones
+const { prisma: prismaPublico, getPrismaWithUser } = require('../src/prisma-client');
 
 const getUserPrisma = async (req) => {
   const token = req.headers.token;
@@ -22,7 +19,8 @@ exports.listar = async (req, res, next) => {
         email: true,
         rol: true,
         estado: true,
-        firma: true
+        telefono: true,
+        firma: true,
       }
     });
     res.status(200).json(usuarios);
@@ -67,8 +65,9 @@ exports.actualizarContrasena = async (req, res, next) => {
     const { newPassword } = req.body;
 
     // 1. Validaciones básicas
-    if (!newPassword || newPassword.length < 6) {
-        return res.status(400).json({ message: 'La nueva contraseña debe tener al menos 6 caracteres.' });
+    const regexContrasena = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).{6,}$/;
+    if (!newPassword || !regexContrasena.test(newPassword)) {
+        return res.status(400).json({ message: 'La contraseña debe contener al menos una mayúscula, una minúscula, un número y un carácter especial.' });
     }
 
     try {
@@ -113,7 +112,7 @@ exports.actualizarContrasena = async (req, res, next) => {
 
 exports.ingresar = async (req, res, next) => {
   try {
-    const usuario = await prismaBase.usuario.findUnique({
+    const usuario = await prismaPublico.usuario.findUnique({
       where: { email: req.body.email },
     });
 
@@ -135,10 +134,10 @@ exports.ingresar = async (req, res, next) => {
     const refreshToken = tokenServices.generateRefreshToken();
     const refreshTokenExp = new Date(Date.now() + 4 * 60 * 60 * 1000); // 4 horas (2h margen tras vencer el access token)
 
-    await prismaBase.usuario.update({
+    await prismaPublico.usuario.update({
       where: { id: usuario.id },
       data: {
-        refreshToken: await bcrypt.hash(refreshToken, 10),
+        refreshToken: tokenServices.hashRefreshToken(refreshToken),
         refreshTokenExp,
         refreshTokenCount: 0,
       },
@@ -164,22 +163,16 @@ exports.refresh = async (req, res) => {
   }
 
   try {
-    // Busca usuarios activos con refresh token no expirado y con renovaciones disponibles
-    const usuarios = await prismaBase.usuario.findMany({
+    const tokenHash = tokenServices.hashRefreshToken(refreshToken);
+
+    // Búsqueda directa por hash — O(1), sin iterar todos los usuarios
+    const usuarioValido = await prismaPublico.usuario.findFirst({
       where: {
         estado: 1,
+        refreshToken: tokenHash,
         refreshTokenExp: { gt: new Date() },
-        refreshToken: { not: null },
-        refreshTokenCount: { lt: 3 },
       },
     });
-
-    // Compara el token recibido con el hash almacenado
-    let usuarioValido = null;
-    for (const u of usuarios) {
-      const coincide = await bcrypt.compare(refreshToken, u.refreshToken);
-      if (coincide) { usuarioValido = u; break; }
-    }
 
     if (!usuarioValido) {
       return res.status(401).json({ message: 'Refresh token inválido, expirado o límite de renovaciones alcanzado' });
@@ -189,7 +182,7 @@ exports.refresh = async (req, res) => {
     const accessToken = tokenServices.encode(usuarioValido);
     const nuevaExp = new Date(Date.now() + 4 * 60 * 60 * 1000); // 4 horas desde el último refresh
 
-    await prismaBase.usuario.update({
+    await prismaPublico.usuario.update({
       where: { id: usuarioValido.id },
       data: {
         refreshTokenExp: nuevaExp,
@@ -212,20 +205,13 @@ exports.salir = async (req, res) => {
   }
 
   try {
-    const usuarios = await prismaBase.usuario.findMany({
-      where: { refreshToken: { not: null } },
-    });
+    const tokenHash = tokenServices.hashRefreshToken(refreshToken);
 
-    for (const u of usuarios) {
-      const coincide = await bcrypt.compare(refreshToken, u.refreshToken);
-      if (coincide) {
-        await prismaBase.usuario.update({
-          where: { id: u.id },
-          data: { refreshToken: null, refreshTokenExp: null },
-        });
-        break;
-      }
-    }
+    // Búsqueda directa por hash — invalida solo el token correcto
+    await prismaPublico.usuario.updateMany({
+      where: { refreshToken: tokenHash },
+      data: { refreshToken: null, refreshTokenExp: null },
+    });
 
     res.status(200).json({ message: 'Sesión cerrada' });
   } catch (err) {
@@ -245,6 +231,7 @@ exports.actualizar = async (req, res, next) => {
         email: req.body.email,
         rol: req.body.rol,
         estado: req.body.estado,
+        telefono: req.body.telefono ?? undefined,
       },
     });
 
@@ -257,12 +244,15 @@ exports.actualizar = async (req, res, next) => {
 };
 
 exports.actualizarfirma = async (req, res) => {
-  const prisma = req.prisma;
+  const id = parseInt(req.params.id);
+  if (!id) return res.status(400).json({ error: 'ID de usuario requerido' });
+
   try {
     const prisma = await getUserPrisma(req);
     const usuarioActualizado = await prisma.usuario.update({
-      where: { email: req.body.email },
+      where: { id },
       data: { firma: req.body.firma },
+      select: { id: true, nombre: true, email: true },
     });
 
     res.status(200).json({
@@ -271,9 +261,7 @@ exports.actualizarfirma = async (req, res) => {
     });
   } catch (err) {
     console.error('Error al actualizar la firma:', err.message);
-    res.status(500).json({
-      error: err.message,
-    });
+    res.status(500).json({ error: err.message });
   }
 };
 
