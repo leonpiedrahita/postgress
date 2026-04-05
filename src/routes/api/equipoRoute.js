@@ -24,5 +24,6 @@ router.get("/listaruno/:id",auth.verificarUsuario,equipoController.listaruno);
 router.post("/buscarequipos",auth.verificarUsuario,equipoController.buscarequipos);
 router.get("/listartodos",auth.verificarUsuario,equipoController.listarTodos);
 router.patch("/actualizarcronograma",auth.verificarUsuario,equipoController.actualizarcronograma)
+router.get("/preventivos",auth.verificarUsuarioLum,equipoController.listarPreventivos)
 
 module.exports = router;

@@ -499,3 +499,31 @@ exports.actualizarcronograma = async (req, res) => {
     res.status(500).json({ error: 'Error actualizando fecha de cronograma equipo' });
   }
 };
+
+exports.listarPreventivos = async (req, res) => {
+  const prisma = req.prisma;
+  try {
+    const equipos = await prisma.equipo.findMany({
+      where: {
+        fechaDePreventivo: { not: null },
+        estado: { not: 'Inactivo' },
+        referencia: { periodicidadmantenimiento: { not: 'Libre de mantenimiento' } },
+      },
+      select: {
+        id: true,
+        nombre: true,
+        serie: true,
+        tipoDeContrato: true,
+        fechaDePreventivo: true,
+        cliente: { select: { nombre: true } },
+        propietario: { select: { nombre: true } },
+        referencia: { select: { periodicidadmantenimiento: true } },
+      },
+      orderBy: { fechaDePreventivo: 'asc' },
+    });
+    res.status(200).json(equipos);
+  } catch (err) {
+    console.error('Error al listar preventivos:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
