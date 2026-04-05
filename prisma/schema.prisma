@@ -136,6 +136,7 @@ model Equipo {
   historialDeServicios  HistorialServicio[] // Relación con HistorialServicio
   documentosLegales     DocumentoLegal[] // Relación con DocumentoLegal
   ingresos              Ingreso[] // Relación uno a muchos con Ingreso
+  borradores            Borrador[] // Relación con borradores de reportes
   createdAt             DateTime               @default(now()) // Fecha de creación
   updatedAt             DateTime               @updatedAt // Fecha de última actualización
 
@@ -265,4 +266,17 @@ model Reporte {
   historialServicios HistorialServicio[] // Relación inversa con HistorialServicio
 
   @@map("reporte") // Opcional: Mapea el modelo a una tabla con un nombre específico
+}
+
+model Borrador {
+  id           Int      @id @default(autoincrement())
+  usuarioId    Int
+  equipoId     Int
+  datos        Json
+  creadoEn     DateTime @default(now())
+  actualizadoEn DateTime @updatedAt
+
+  equipo       Equipo   @relation(fields: [equipoId], references: [id])
+
+  @@map("borradores")
 }

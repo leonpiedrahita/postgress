@@ -10,10 +10,16 @@ exports.listarTodosLosIngresos = async (req, res) => {
       include: {
         equipo: {
           include: {
-            cliente: true, // Incluye información del cliente relacionado
+            cliente: true,
+            propietario: true,
+            proveedor: true,
+            historialPropietarios: {
+              include: { propietario: true, cliente: true, proveedor: true },
+              orderBy: { fecha: 'desc' },
+            },
           },
-        }, // Incluye información del equipo relacionado
-        etapas: true, // Incluir las etapas asociadas a cada ingreso
+        },
+        etapas: true,
       },
     });
     res.status(200).json(ingresos.length > 0 ? ingresos : []);
@@ -44,6 +50,12 @@ exports.listarIngresosAbiertos = async (req, res) => {
         equipo: {
           include: {
             cliente: true,
+            propietario: true,
+            proveedor: true,
+            historialPropietarios: {
+              include: { propietario: true, cliente: true, proveedor: true },
+              orderBy: { fecha: 'desc' },
+            },
           },
         },
         etapas: true,
