@@ -11,7 +11,7 @@ const attachPrisma = require('../../middleware/attachPrisma');
 // A partir de aquí, se requiere token y se adjunta cliente Prisma
 router.use(attachPrisma);
 //.com/api/usuario/listar
-router.get("/listar",auth.verificarUsuario,equipoController.listar );
+router.get("/listar",auth.verificarUsuarioLum,equipoController.listar );
 
 //.com/api/usuario/register
 router.post("/registrar",auth.verificarAdminCalCot,equipoController.registrar);
@@ -19,10 +19,10 @@ router.post("/registrar",auth.verificarAdminCalCot,equipoController.registrar);
 //.com/api/usuario/actualizar/id del elemento de la colección que quiero modificar
 router.patch("/actualizar/:id",auth.verificarAdminCalCot,equipoController.actualizar);
 router.patch("/actualizarestado/:id",auth.verificarAdminSopCotBodLum,equipoController.actualizarEstado);
-router.get("/buscar",auth.verificarUsuario,equipoController.buscar);
-router.get("/listaruno/:id",auth.verificarUsuario,equipoController.listaruno);
-router.post("/buscarequipos",auth.verificarUsuario,equipoController.buscarequipos);
-router.get("/listartodos",auth.verificarUsuario,equipoController.listarTodos);
+router.get("/buscar",auth.verificarUsuarioLum,equipoController.buscar);
+router.get("/listaruno/:id",auth.verificarUsuarioLum,equipoController.listaruno);
+router.post("/buscarequipos",auth.verificarUsuarioLum,equipoController.buscarequipos);
+router.get("/listartodos",auth.verificarUsuarioLum,equipoController.listarTodos);
 router.patch("/actualizarcronograma",auth.verificarUsuario,equipoController.actualizarcronograma)
 router.get("/preventivos",auth.verificarUsuarioLum,equipoController.listarPreventivos)
 router.get("/auditlog/:id",auth.verificarAdmin,equipoController.listarAuditLog)
