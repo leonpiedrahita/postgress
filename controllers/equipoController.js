@@ -500,6 +500,22 @@ exports.actualizarcronograma = async (req, res) => {
   }
 };
 
+exports.listarAuditLog = async (req, res) => {
+  const prisma = req.prisma;
+  const equipoId = parseInt(req.params.id);
+  if (isNaN(equipoId)) return res.status(400).json({ error: 'ID inválido' });
+  try {
+    const logs = await prisma.auditLog.findMany({
+      where: { tableName: 'Equipo', recordId: equipoId },
+      orderBy: { timestamp: 'desc' },
+    });
+    res.status(200).json(logs);
+  } catch (err) {
+    console.error('Error al obtener audit log:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
 exports.listarPreventivos = async (req, res) => {
   const prisma = req.prisma;
   try {
@@ -514,6 +530,7 @@ exports.listarPreventivos = async (req, res) => {
         nombre: true,
         serie: true,
         tipoDeContrato: true,
+        ubicacionNombre: true,
         fechaDePreventivo: true,
         cliente: { select: { nombre: true } },
         propietario: { select: { nombre: true } },
