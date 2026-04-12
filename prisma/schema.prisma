@@ -128,6 +128,7 @@ model Equipo {
   ubicacionNombre       String // Nombre de la ubicación
   ubicacionDireccion    String // Dirección de la ubicación
   estado                String // Estado del equipo
+  atencion              String? // Atención: Autorizado, Cartera o MP
   historialPropietarios HistorialPropietario[] // Relación con HistorialPropietario
   fechaDeInstalacion    String? // Fecha de instalación (puede ser opcional)
   fechaDePreventivo     DateTime? // Fecha de preventivo (puede ser opcional)
