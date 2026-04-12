@@ -543,6 +543,8 @@ exports.actualizarAtencion = async (req, res) => {
   }
 };
 
+const NIT_BIOSYSTEMS = '811003513'; // RUT de Biosystems — proveedor propio
+
 exports.importarAtencion = async (req, res) => {
   const prisma = req.prisma;
   // registros: [{ nit: string, dias: number }]
@@ -590,10 +592,11 @@ exports.importarAtencion = async (req, res) => {
     let enBlanco = 0;
 
     const actualizaciones = equipos.map((equipo) => {
-      const esBiosystems = equipo.proveedor?.nombre?.toLowerCase().includes('biosystems');
+      const nitProveedor = String(equipo.proveedor?.nit || '').trim();
+      const esBiosystems = nitProveedor === NIT_BIOSYSTEMS;
       const nitBuscar = esBiosystems
         ? String(equipo.cliente?.nit || '').trim()
-        : String(equipo.proveedor?.nit || '').trim();
+        : nitProveedor;
 
       const dias = mapaCartera.has(nitBuscar) ? mapaCartera.get(nitBuscar) : null;
 
@@ -607,8 +610,7 @@ exports.importarAtencion = async (req, res) => {
         else                     atencion = 'Autorizado';
         actualizados++;
       } else {
-        // Sin info en CSV: solo marcar MP si el preventivo está vencido
-        atencion = vencido ? 'MP' : null;
+        atencion = vencido ? 'MP' : 'Autorizado';
         enBlanco++;
       }
 
