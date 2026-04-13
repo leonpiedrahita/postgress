@@ -195,11 +195,18 @@ exports.actualizarEstado = async (req, res) => {
       }
     });
 
-    // 4. Notificación WhatsApp si el equipo queda disponible
+    // 4. Notificación WhatsApp si el equipo queda disponible y NO viene del flujo de ingresos
+    // (si tiene ingreso abierto, agregarEtapa ya envió la notificación)
     const ESTADOS_DISPONIBLE = ['En servicio', 'Disponible', 'Disp. Pdte. MP.'];
     if (ESTADOS_DISPONIBLE.includes(nuevoEstado)) {
-      const { notificarEquipoDisponible } = require('../services/whatsappService');
-      notificarEquipoDisponible(id, nuevoEstado).catch(console.error);
+      const ingresoAbierto = await prisma.ingreso.findFirst({
+        where: { equipoId: id, estado: 'Abierto' },
+        select: { id: true },
+      });
+      if (!ingresoAbierto) {
+        const { notificarEquipoDisponible } = require('../services/whatsappService');
+        notificarEquipoDisponible(id, nuevoEstado).catch(console.error);
+      }
     }
 
     // 5. Respuesta exitosa
