@@ -30,9 +30,16 @@ exports.listar = async (req, res, next) => {
   }
 };
 
+const REGEX_E164 = /^\+\d{7,15}$/;
+
 exports.registrar = async (req, res, next) => {
    const prisma = req.prisma;
   try {
+    const { telefono } = req.body;
+    if (telefono && !REGEX_E164.test(telefono)) {
+      return res.status(400).json({ message: 'El teléfono debe estar en formato E.164 (ej: +57XXXXXXXXXX)' });
+    }
+
     const existingUser = await prisma.usuario.findUnique({
       where: { email: req.body.email },
     });
@@ -224,6 +231,11 @@ exports.salir = async (req, res) => {
 exports.actualizar = async (req, res, next) => {
   const prisma = req.prisma;
   try {
+    const { telefono } = req.body;
+    if (telefono && !REGEX_E164.test(telefono)) {
+      return res.status(400).json({ message: 'El teléfono debe estar en formato E.164 (ej: +57XXXXXXXXXX)' });
+    }
+
     const prisma = await getUserPrisma(req);
     const usuario = await prisma.usuario.update({
       where: { id: parseInt(req.params.id) },

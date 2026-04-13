@@ -169,6 +169,31 @@ describe('registrar', () => {
     expect(res.status).toHaveBeenCalledWith(201);
   });
 
+  it('guarda el telefono cuando se proporciona en formato E.164 válido', async () => {
+    mockPrismaInternal.usuario.findUnique.mockResolvedValue(null);
+    bcrypt.hash.mockResolvedValue('hashed-password');
+    mockPrismaInternal.usuario.create.mockResolvedValue({ id: 1, nombre: 'Leo', telefono: '+573001234567' });
+
+    const req = mockReq({ body: { nombre: 'Leo', email: 'leo@test.com', password: '123456', rol: 'administrador', telefono: '+573001234567' } });
+    const res = mockRes();
+    await usuarioController.registrar(req, res, mockNext);
+
+    expect(mockPrismaInternal.usuario.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ telefono: '+573001234567' }) })
+    );
+    expect(res.status).toHaveBeenCalledWith(201);
+  });
+
+  it('retorna 400 si el telefono no tiene formato E.164', async () => {
+    const res = mockRes();
+    await usuarioController.registrar(
+      mockReq({ body: { nombre: 'Leo', email: 'leo@test.com', password: '123456', rol: 'administrador', telefono: '3001234567' } }),
+      res, mockNext
+    );
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(mockPrismaInternal.usuario.create).not.toHaveBeenCalled();
+  });
+
   it('retorna 409 si el email ya existe', async () => {
     mockPrismaInternal.usuario.findUnique.mockResolvedValue({ id: 1, email: 'leo@test.com' });
     const res = mockRes();
@@ -298,6 +323,28 @@ describe('actualizar', () => {
     const res = mockRes();
     await usuarioController.actualizar(
       mockReq({ params: { id: '1' }, body: { nombre: 'Leo', email: 'leo@test.com', rol: 'administrador', estado: 1 } }),
+      res, mockNext
+    );
+    expect(res.json).toHaveBeenCalledWith(usuarioActualizado);
+  });
+
+  it('retorna 400 si el telefono no tiene formato E.164 al actualizar', async () => {
+    const res = mockRes();
+    await usuarioController.actualizar(
+      mockReq({ params: { id: '1' }, body: { nombre: 'Leo', telefono: '300-123-4567' } }),
+      res, mockNext
+    );
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(mockPrismaInternal.usuario.update).not.toHaveBeenCalled();
+  });
+
+  it('actualiza con telefono E.164 válido y retorna 200', async () => {
+    const usuarioActualizado = { id: 1, nombre: 'Leo', telefono: '+573001234567' };
+    mockPrismaInternal.usuario.update.mockResolvedValue(usuarioActualizado);
+
+    const res = mockRes();
+    await usuarioController.actualizar(
+      mockReq({ params: { id: '1' }, body: { nombre: 'Leo', telefono: '+573001234567' } }),
       res, mockNext
     );
     expect(res.json).toHaveBeenCalledWith(usuarioActualizado);

@@ -125,6 +125,18 @@ describe('notificarIngresoEquipo', () => {
     expect(llamadas[1][1].to).toBe('+573002222222');
   });
 
+  it('consulta solo usuarios con rol administrador', async () => {
+    mockPrismaInstance.ingreso.findUnique.mockResolvedValue(ingresoMock);
+    mockPrismaInstance.usuario.findMany.mockResolvedValue(adminsMock);
+    axios.post.mockResolvedValue({ data: {} });
+
+    await notificarIngresoEquipo(1);
+
+    expect(mockPrismaInstance.usuario.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ rol: 'administrador' }) })
+    );
+  });
+
   it('no envía nada si el ingreso no existe', async () => {
     mockPrismaInstance.ingreso.findUnique.mockResolvedValue(null);
     const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
@@ -184,6 +196,18 @@ describe('notificarEquipoDisponible', () => {
     expect(params[0].text).toBe('Disponible');
     expect(params[1].text).toBe('Ventilador Mecánico - VM-202');
     expect(params[2].text).toBe('Bodega 1');
+  });
+
+  it('consulta solo usuarios con rol administrador', async () => {
+    mockPrismaInstance.equipo.findUnique.mockResolvedValue(equipoMock);
+    mockPrismaInstance.usuario.findMany.mockResolvedValue(usuariosMock);
+    axios.post.mockResolvedValue({ data: {} });
+
+    await notificarEquipoDisponible(5, 'Disponible');
+
+    expect(mockPrismaInstance.usuario.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ rol: 'administrador' }) })
+    );
   });
 
   it('no envía nada si el equipo no existe', async () => {

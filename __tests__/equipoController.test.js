@@ -16,6 +16,7 @@ const mockPrisma = {
     update: jest.fn(),
     count: jest.fn(),
   },
+  ingreso: { findFirst: jest.fn() },
   historialPropietario: { create: jest.fn() },
   historialServicio: { create: jest.fn() },
   documentoLegal: { create: jest.fn() },
@@ -179,9 +180,10 @@ describe('actualizarEstado', () => {
     expect(res.status).toHaveBeenCalledWith(404);
   });
 
-  it('dispara notificación WP cuando el estado es Disponible', async () => {
+  it('dispara notificación WP cuando el estado es Disponible y no hay ingreso abierto', async () => {
     const { notificarEquipoDisponible } = require('../services/whatsappService');
     mockPrisma.equipo.update.mockResolvedValue({ id: 1, estado: 'Disponible' });
+    mockPrisma.ingreso.findFirst.mockResolvedValue(null); // sin ingreso abierto
 
     const req = mockReq({ params: { id: '1' }, body: { nuevoEstado: 'Disponible' } });
     const res = mockRes();
@@ -189,6 +191,19 @@ describe('actualizarEstado', () => {
 
     expect(res.status).toHaveBeenCalledWith(200);
     expect(notificarEquipoDisponible).toHaveBeenCalledWith(1, 'Disponible');
+  });
+
+  it('NO dispara notificación WP cuando hay un ingreso abierto (evita duplicado)', async () => {
+    const { notificarEquipoDisponible } = require('../services/whatsappService');
+    mockPrisma.equipo.update.mockResolvedValue({ id: 1, estado: 'Disponible' });
+    mockPrisma.ingreso.findFirst.mockResolvedValue({ id: 42 }); // ingreso abierto existe
+
+    const req = mockReq({ params: { id: '1' }, body: { nuevoEstado: 'Disponible' } });
+    const res = mockRes();
+    await equipoController.actualizarEstado(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(notificarEquipoDisponible).not.toHaveBeenCalled();
   });
 
   it('no dispara notificación WP para estados que no aplican', async () => {
