@@ -109,7 +109,7 @@ async function notificarIngresoEquipo(ingresoId) {
 
     const admins = await prisma.usuario.findMany({
       where: {
-        rol: { in: ['administrador', 'soporte', 'lumira', 'cotizaciones', 'bodega'] },
+        rol: 'administrador',
         estado: 1,
         telefono: { not: null },
       },
@@ -175,7 +175,7 @@ async function notificarEquipoDisponible(equipoId, nuevoEstado, observacion, ubi
 
     const usuarios = await prisma.usuario.findMany({
       where: {
-        rol: { in: ['administrador', 'soporte', 'cotizaciones', 'comercial', 'bodega', 'calidad'] },
+        rol: 'administrador',
         estado: 1,
         telefono: { not: null },
       },
@@ -241,7 +241,7 @@ async function notificarCambioEtapa(ingresoId, datosEtapa) {
 
     const usuarios = await prisma.usuario.findMany({
       where: {
-        rol: { in: ['administrador', 'soporte', 'cotizaciones', 'comercial', 'bodega', 'calidad'] },
+        rol: 'administrador',
         estado: 1,
         telefono: { not: null },
       },

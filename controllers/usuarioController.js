@@ -49,6 +49,7 @@ exports.registrar = async (req, res, next) => {
         email: req.body.email,
         password: hash,
         rol: req.body.rol,
+        telefono: req.body.telefono || null,
       },
     });
 
