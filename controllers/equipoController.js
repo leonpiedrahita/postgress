@@ -16,7 +16,7 @@ exports.listar = async (req, res) => {
         proveedor: true, // Incluye información del proveedor 
         referencia: true, // Incluye información de la referencia
         historialDeServicios: true, // Incluye el historial de servicios
-        documentosLegales: true, // Incluye documentos legales
+        documentosLegales: { where: { eliminado: false } }, // Excluye documentos eliminados (soft delete)
         historialPropietarios: {
           include: {
             cliente: true, // Incluye información del cliente en el historial
@@ -195,21 +195,7 @@ exports.actualizarEstado = async (req, res) => {
       }
     });
 
-    // 4. Notificación WhatsApp si el equipo queda disponible y NO viene del flujo de ingresos
-    // (si tiene ingreso abierto, agregarEtapa ya envió la notificación)
-    const ESTADOS_DISPONIBLE = ['En servicio', 'Disponible', 'Disp. Pdte. MP.'];
-    if (ESTADOS_DISPONIBLE.includes(nuevoEstado)) {
-      const ingresoAbierto = await prisma.ingreso.findFirst({
-        where: { equipoId: id, estado: 'Abierto' },
-        select: { id: true },
-      });
-      if (!ingresoAbierto) {
-        const { notificarEquipoDisponible } = require('../services/whatsappService');
-        notificarEquipoDisponible(id, nuevoEstado).catch(console.error);
-      }
-    }
-
-    // 5. Respuesta exitosa
+    // 4. Respuesta exitosa
     res.status(200).json({
       message: `Estado del equipo ${id} actualizado a '${nuevoEstado}'`,
       equipo: updatedEquipo
@@ -303,6 +289,35 @@ exports.registrardocumento = async (req, res) => {
   }
 };
 
+/**
+ * Soft-delete de un documento legal.
+ * Marca eliminado=true sin borrar el registro ni el archivo en S3.
+ */
+exports.eliminarDocumentoLegal = async (req, res) => {
+  const prisma = req.prisma;
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'El parámetro id debe ser un número válido.' });
+    }
+
+    const documento = await prisma.documentoLegal.findUnique({ where: { id } });
+    if (!documento) {
+      return res.status(404).json({ error: `No se encontró el documento con id ${id}.` });
+    }
+
+    await prisma.documentoLegal.update({
+      where: { id },
+      data: { eliminado: true },
+    });
+
+    res.status(200).json({ message: 'Documento eliminado correctamente.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
 // Buscar equipos
 exports.buscar = async (req, res) => {
   const prisma = req.prisma;
@@ -344,7 +359,7 @@ exports.listaruno = async (req, res) => {
           }, // Incluye los documentos de soporte en el historial de servicios
 
         }, // Incluye el historial de servicios
-        documentosLegales: true, // Incluye documentos legales
+        documentosLegales: { where: { eliminado: false } }, // Excluye documentos eliminados (soft delete)
         historialPropietarios: {
           include: {
             cliente: true, // Incluye información del cliente en el historial
@@ -437,7 +452,7 @@ exports.buscarequipos = async (req, res) => {
           cliente: { select: { id: true, nombre: true, nit: true } },
           proveedor: { select: { id: true, nombre: true, nit: true } },
           referencia: { select: { id: true, periodicidadmantenimiento: true } },
-          documentosLegales: { select: { id: true } },
+          documentosLegales: { where: { eliminado: false }, select: { id: true } },
           historialPropietarios: {
             include: {
               cliente: true,

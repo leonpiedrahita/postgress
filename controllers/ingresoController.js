@@ -388,21 +388,15 @@ exports.agregarEtapa = async (req, res) => {
     });
 
     // Notificación WhatsApp (no bloqueante)
-    const ESTADOS_DISPONIBLE = ['En servicio', 'Disponible', 'Disp. Pdte. MP.'];
-    const estadoFinalEquipo = nuevoestadoequipo || nombre;
-    if (ESTADOS_DISPONIBLE.includes(estadoFinalEquipo)) {
-      const { notificarEquipoDisponible } = require('../services/whatsappService');
-      notificarEquipoDisponible(ingreso.equipoId, estadoFinalEquipo, comentario, ubicacion).catch(console.error);
-    } else {
-      const { notificarCambioEtapa } = require('../services/whatsappService');
-      notificarCambioEtapa(parseInt(ingresoId), {
-        etapaFinalizada: etapaMasReciente?.nombre || '',
-        etapaNueva: nombre,
-        ubicacion,
-        comentario,
-        responsable,
-      }).catch(console.error);
-    }
+    const { notificarCambioEtapa } = require('../services/whatsappService');
+    notificarCambioEtapa(parseInt(ingresoId), {
+      etapaFinalizada: etapaMasReciente?.nombre || '',
+      etapaNueva: nombre,
+      ubicacion,
+      comentario,
+      responsable,
+      estadoEquipo: nuevoestadoequipo || null,
+    }).catch(console.error);
 
   } catch (err) {
     console.error(err);
