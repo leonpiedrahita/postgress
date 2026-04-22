@@ -25,9 +25,9 @@ exports.actualizarConfiguracion = async (req, res) => {
 
   try {
     await prisma.$executeRaw`
-      UPDATE configuracion_notificaciones
-      SET habilitado = ${habilitado}
-      WHERE rol = ${rol} AND "tipoNotificacion" = ${tipoNotificacion}
+      INSERT INTO configuracion_notificaciones (rol, "tipoNotificacion", habilitado)
+      VALUES (${rol}, ${tipoNotificacion}, ${habilitado})
+      ON CONFLICT (rol, "tipoNotificacion") DO UPDATE SET habilitado = ${habilitado}
     `;
     res.status(200).json({ message: 'Configuración actualizada' });
   } catch (err) {
