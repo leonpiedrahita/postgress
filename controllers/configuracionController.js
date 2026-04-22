@@ -5,9 +5,9 @@ const prisma = getPrismaWithUser('sistema');
 exports.obtenerConfiguracion = async (req, res) => {
   try {
     const filas = await prisma.$queryRaw`
-      SELECT rol, tipo_notificacion AS "tipoNotificacion", habilitado
+      SELECT rol, "tipoNotificacion", habilitado
       FROM configuracion_notificaciones
-      ORDER BY rol, tipo_notificacion
+      ORDER BY rol, "tipoNotificacion"
     `;
     res.status(200).json(filas);
   } catch (err) {
@@ -27,7 +27,7 @@ exports.actualizarConfiguracion = async (req, res) => {
     await prisma.$executeRaw`
       UPDATE configuracion_notificaciones
       SET habilitado = ${habilitado}
-      WHERE rol = ${rol} AND tipo_notificacion = ${tipoNotificacion}
+      WHERE rol = ${rol} AND "tipoNotificacion" = ${tipoNotificacion}
     `;
     res.status(200).json({ message: 'Configuración actualizada' });
   } catch (err) {
