@@ -403,3 +403,46 @@ exports.agregarEtapa = async (req, res) => {
     res.status(500).json({ error: 'Ocurrió un error al agregar la etapa.', detalles: err.message });
   }
 };
+
+/**
+ * Listar todos los ingresos de un equipo específico, ordenados por fecha de creación descendente.
+ */
+exports.listarPorEquipo = async (req, res) => {
+  const prisma = req.prisma;
+  try {
+    const equipoId = parseInt(req.params.equipoId);
+    const ingresos = await prisma.ingreso.findMany({
+      where: { equipoId },
+      include: { etapas: { orderBy: { createdAt: 'asc' } } },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.status(200).json(ingresos);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Ocurrió un error al listar los ingresos del equipo.', detalles: err.message });
+  }
+};
+
+/**
+ * Cerrar un ingreso: cambia su estado a "Cerrado".
+ * Solo se puede cerrar si el ingreso está en estado "Abierto".
+ */
+exports.cerrar = async (req, res) => {
+  const prisma = req.prisma;
+  try {
+    const ingresoId = parseInt(req.params.ingresoId);
+    const ingreso = await prisma.ingreso.findUnique({ where: { id: ingresoId } });
+    if (!ingreso) return res.status(404).json({ error: 'Ingreso no encontrado.' });
+    if (ingreso.estado !== 'Abierto') {
+      return res.status(400).json({ error: `El ingreso ya está en estado "${ingreso.estado}".` });
+    }
+    const actualizado = await prisma.ingreso.update({
+      where: { id: ingresoId },
+      data: { estado: 'Cerrado' },
+    });
+    res.status(200).json({ message: 'Ingreso cerrado correctamente.', ingreso: actualizado });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Ocurrió un error al cerrar el ingreso.', detalles: err.message });
+  }
+};

@@ -1,19 +1,25 @@
 const axios = require('axios');
-const { PrismaClient } = require('@prisma/client');
+const { getPrismaWithUser } = require('../src/prisma-client');
 
-const prisma = new PrismaClient();
+const prisma = getPrismaWithUser('sistema');
 
 const WA_URL = `https://graph.facebook.com/${process.env.WHATSAPP_VERSION}/${process.env.WHATSAPP_PHONE_ID}/messages`;
 
-// Roles excluidos de notificaciones de nuevo ingreso (lumira sí recibe)
-const ROLES_SIN_NOTIFICACION_INGRESO = ['ventas', 'ingresos', 'calidad'];
 
-
-// Roles base para notificaciones de cambio de etapa
-const ROLES_BASE_ETAPA = ['administrador', 'soporte', 'aplicaciones', 'comercial', 'cotizaciones'];
-
-// Etapas que incluyen bodega en los destinatarios
-const ETAPAS_BODEGA = ['Listo para despacho', 'Despachado'];
+/**
+ * Obtiene los roles habilitados para un tipo de notificación desde la BD.
+ * @param {'ingreso'|'etapa'} tipo
+ * @returns {Promise<string[]>}
+ */
+async function getRolesHabilitados(tipo) {
+  const filas = await prisma.$queryRaw`
+    SELECT rol FROM configuracion_notificaciones
+    WHERE tipo_notificacion = ${tipo} AND habilitado = true
+  `;
+  const roles = filas.map(f => f.rol);
+  if (!roles.includes('administrador')) roles.push('administrador');
+  return roles;
+}
 
 /**
  * Valida formato E.164 (+57XXXXXXXXXX)
@@ -99,12 +105,19 @@ async function enviarMensajeTexto(destinatario, texto) {
 /**
  * Notifica cuando se registra un nuevo ingreso de equipo.
  * Usa la plantilla "gomaint_nuevo_ingreso".
- * Destinatarios: todos los roles internos excepto ventas, ingresos, calidad y lumira.
+ * Destinatarios: roles habilitados para tipo "ingreso" en la tabla de configuración.
  * @param {number} ingresoId
  * @returns {Promise<void>}
  */
 async function notificarIngresoEquipo(ingresoId) {
   try {
+    const rolesHabilitados = await getRolesHabilitados('ingreso');
+
+    if (!rolesHabilitados.length) {
+      console.warn('[WhatsApp] Ningún rol habilitado para notificaciones de ingreso.');
+      return;
+    }
+
     const ingreso = await prisma.ingreso.findUnique({
       where: { id: ingresoId },
       include: {
@@ -120,7 +133,7 @@ async function notificarIngresoEquipo(ingresoId) {
 
     const usuarios = await prisma.usuario.findMany({
       where: {
-        rol: { notIn: ROLES_SIN_NOTIFICACION_INGRESO },
+        rol: { in: rolesHabilitados },
         estado: 1,
         telefono: { not: null },
       },
@@ -161,15 +174,10 @@ async function notificarIngresoEquipo(ingresoId) {
  * Notifica el cambio de etapa en un ingreso.
  * Usa la plantilla "gomaint_notificacion_estado_y_etapa".
  *
- * Reglas de envío:
- * - Nunca notifica si etapaNueva === 'Finalizado' y etapaFinalizada === 'Despachado'
- * - Incluye bodega solo si etapaNueva es 'Listo para despacho' o 'Despachado'
- * - Nunca notifica a ventas, ingresos, calidad ni lumira
- *
- * Parámetros de la plantilla:
- * {{1}} nombre cliente, {{2}} equipo-serie, {{3}} estado equipo,
- * {{4}} etapa finalizada, {{5}} etapa iniciada, {{6}} ubicación,
- * {{7}} observaciones, {{8}} responsable, {{9}} ciudad cliente
+ * Reglas fijas (independientes de la configuración):
+ * - Sin notificación si etapaNueva === 'Finalizado' y etapaFinalizada === 'Despachado'
+ * - Sin notificación si etapaFinalizada === 'Desinfección'
+ * - bodega solo recibe si etapaNueva es 'Listo para despacho' o 'Despachado'
  *
  * @param {number} ingresoId
  * @param {{ etapaFinalizada: string, etapaNueva: string, ubicacion: string, comentario: string, responsable: string, estadoEquipo?: string }} datosEtapa
@@ -177,25 +185,32 @@ async function notificarIngresoEquipo(ingresoId) {
  */
 async function notificarCambioEtapa(ingresoId, datosEtapa) {
   try {
-    // Regla: Finalizado posterior a Despachado → sin notificación
     if (datosEtapa.etapaNueva === 'Finalizado' && datosEtapa.etapaFinalizada === 'Despachado') {
       console.log('[WhatsApp] Etapa Finalizado post-Despachado — omitiendo notificación.');
       return;
     }
 
-    // Regla: salida de Desinfección hacia cualquier etapa → sin notificación
     if (datosEtapa.etapaFinalizada === 'Desinfección') {
       console.log('[WhatsApp] Salida de Desinfección — omitiendo notificación.');
       return;
     }
 
+    // Seleccionar configuración según si la nueva etapa es Despachado o no
+    const tipoCfg = datosEtapa.etapaNueva === 'Despachado' ? 'etapa_despachado' : 'etapa';
+    const rolesHabilitados = await getRolesHabilitados(tipoCfg);
+
+    if (!rolesHabilitados.length) {
+      console.warn(`[WhatsApp] Ningún rol habilitado para notificaciones de ${tipoCfg}.`);
+      return;
+    }
+
+    const roles = rolesHabilitados;
+
     const ingreso = await prisma.ingreso.findUnique({
       where: { id: ingresoId },
       include: {
         equipo: {
-          include: {
-            cliente: { include: { sedePrincipal: true } },
-          },
+          include: { cliente: { include: { sedePrincipal: true } } },
         },
       },
     });
@@ -204,16 +219,6 @@ async function notificarCambioEtapa(ingresoId, datosEtapa) {
       console.warn(`[WhatsApp] Ingreso ${ingresoId} no encontrado para notificación de etapa.`);
       return;
     }
-
-    // Determinar roles destinatarios según la etapa:
-    // - Bodega solo en "Listo para despacho" y "Despachado"
-    // - Lumira siempre (el único caso sin notificación ya fue interceptado arriba: Finalizado+Despachado)
-    const incluirBodega = ETAPAS_BODEGA.includes(datosEtapa.etapaNueva);
-    const roles = [
-      ...ROLES_BASE_ETAPA,
-      ...(incluirBodega ? ['bodega'] : []),
-      'lumira',
-    ];
 
     const usuarios = await prisma.usuario.findMany({
       where: { rol: { in: roles }, estado: 1, telefono: { not: null } },
@@ -234,15 +239,15 @@ async function notificarCambioEtapa(ingresoId, datosEtapa) {
       {
         type: 'body',
         parameters: [
-          { type: 'text', text: cliente?.nombre || 'Sin cliente' },            // {{1}}
-          { type: 'text', text: `${equipo.nombre} - ${equipo.serie}` },        // {{2}}
-          { type: 'text', text: estadoEquipo },                                // {{3}}
-          { type: 'text', text: datosEtapa.etapaFinalizada || 'N/A' },         // {{4}}
-          { type: 'text', text: datosEtapa.etapaNueva || 'Sin etapa' },        // {{5}}
-          { type: 'text', text: datosEtapa.ubicacion || 'Sin ubicación' },     // {{6}}
-          { type: 'text', text: datosEtapa.comentario || 'Sin observaciones' },// {{7}}
-          { type: 'text', text: datosEtapa.responsable || 'Sin responsable' }, // {{8}}
-          { type: 'text', text: ciudad },                                      // {{9}}
+          { type: 'text', text: cliente?.nombre || 'Sin cliente' },
+          { type: 'text', text: `${equipo.nombre} - ${equipo.serie}` },
+          { type: 'text', text: estadoEquipo },
+          { type: 'text', text: datosEtapa.etapaFinalizada || 'N/A' },
+          { type: 'text', text: datosEtapa.etapaNueva || 'Sin etapa' },
+          { type: 'text', text: datosEtapa.ubicacion || 'Sin ubicación' },
+          { type: 'text', text: datosEtapa.comentario || 'Sin observaciones' },
+          { type: 'text', text: datosEtapa.responsable || 'Sin responsable' },
+          { type: 'text', text: ciudad },
         ],
       },
     ];

@@ -147,6 +147,26 @@ exports.actualizar = async (req, res) => {
     });
   }
 };
+exports.listarPorEquipo = async (req, res) => {
+  const prisma = req.prisma;
+  try {
+    const equipoId = parseInt(req.params.equipoId);
+    const historial = await prisma.historialServicio.findMany({
+      where: { equipoId },
+      include: {
+        reporte: true,
+        responsable: { select: { nombre: true, rol: true } },
+        documentosSoporte: { where: { eliminado: false } },
+      },
+      orderBy: { fecha: 'desc' },
+    });
+    res.status(200).json(historial);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
 exports.crearDocumentoSoporte = async (req, res) => {
   const prisma = req.prisma;
   try {

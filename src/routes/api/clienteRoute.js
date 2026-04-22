@@ -22,5 +22,7 @@ router.patch("/actualizar/:id",auth.verificarAdminCot, clienteController.actuali
 router.post("/agregarsede/:id",auth.verificarAdminCot, clienteController.agregarsede);
 //.com/api/cliente/agregarsede/:id
 router.patch("/eliminarsede/",auth.verificarAdminCot, clienteController.eliminarsede,);
+// router.get("/listaruno/:id", auth.verificarUsuario, clienteController.listaruno);
+// router.patch("/actualizarsede/:sedeId", auth.verificarAdminCot, clienteController.actualizarsede);
 
 module.exports = router;

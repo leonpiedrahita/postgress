@@ -269,6 +269,16 @@ model Reporte {
   @@map("reporte") // Opcional: Mapea el modelo a una tabla con un nombre específico
 }
 
+model ConfiguracionNotificacion {
+  id               Int     @id @default(autoincrement())
+  rol              String
+  tipoNotificacion String  // "ingreso" | "etapa"
+  habilitado       Boolean @default(true)
+
+  @@unique([rol, tipoNotificacion])
+  @@map("configuracion_notificaciones")
+}
+
 model Borrador {
   id           Int      @id @default(autoincrement())
   usuarioId    Int
