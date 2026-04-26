@@ -26,5 +26,6 @@ router.get("/listartodos",auth.verificarUsuarioLum,equipoController.listarTodos)
 router.patch("/actualizarcronograma",auth.verificarUsuario,equipoController.actualizarcronograma)
 router.get("/preventivos",auth.verificarUsuarioLum,equipoController.listarPreventivos)
 router.get("/auditlog/:id",auth.verificarAdmin,equipoController.listarAuditLog)
+router.get("/historialestado/:id",auth.verificarUsuarioLum,equipoController.listarHistorialEstado)
 
 module.exports = router;

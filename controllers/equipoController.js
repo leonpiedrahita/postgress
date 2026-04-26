@@ -124,8 +124,8 @@ exports.actualizar = async (req, res) => {
       return res.status(404).json({ error: "Equipo no encontrado" });
     }
 
-    // Transacción: update + create
-    const [updatedEquipo, historial] = await prisma.$transaction([
+    // Transacción: update + historialPropietario + historialEstado (si cambió)
+    const ops = [
       prisma.equipo.update({
         where: { id },
         data: {
@@ -152,7 +152,20 @@ exports.actualizar = async (req, res) => {
           equipoId: id,
         },
       }),
-    ]);
+    ];
+
+    if (equipoActual.estado !== estado) {
+      ops.push(prisma.historialEstadoEquipo.create({
+        data: {
+          equipoId: id,
+          estadoAnterior: equipoActual.estado,
+          estadoNuevo: estado,
+          usuarioNombre: validationResponse.nombre || 'sistema',
+        },
+      }));
+    }
+
+    const [updatedEquipo, historial] = await prisma.$transaction(ops);
 
     res.status(200).json({ message: "Equipo actualizado", equipo: updatedEquipo, historial });
 
@@ -174,38 +187,39 @@ exports.actualizarEstado = async (req, res) => {
     const id = parseInt(req.params.id);
     const { nuevoEstado } = req.body;
 
-    // 2. Validación de campos obligatorios
     if (!nuevoEstado) {
       return res.status(400).json({ error: "El campo 'nuevoEstado' es obligatorio" });
     }
 
-    // 3. Actualizar el estado del equipo
-    const updatedEquipo = await prisma.equipo.update({
-      where: { id },
-      data: {
-        estado: nuevoEstado,
-        // El campo 'updatedAt' se actualiza automáticamente gracias a @updatedAt en el schema
-      },
-      select: { // Seleccionamos solo los campos relevantes para la respuesta
-        id: true,
-        nombre: true,
-        serie: true,
-        estado: true,
-        updatedAt: true,
-      }
-    });
+    const equipoActual = await prisma.equipo.findUnique({ where: { id }, select: { estado: true } });
+    if (!equipoActual) {
+      return res.status(404).json({ error: `Equipo con ID ${id} no encontrado.` });
+    }
 
-    // 4. Respuesta exitosa
+    const validationResponse = await tokenServices.decode(req.headers.token);
+
+    const [updatedEquipo] = await prisma.$transaction([
+      prisma.equipo.update({
+        where: { id },
+        data: { estado: nuevoEstado },
+        select: { id: true, nombre: true, serie: true, estado: true, updatedAt: true },
+      }),
+      prisma.historialEstadoEquipo.create({
+        data: {
+          equipoId: id,
+          estadoAnterior: equipoActual.estado,
+          estadoNuevo: nuevoEstado,
+          usuarioNombre: validationResponse?.nombre || 'sistema',
+        },
+      }),
+    ]);
+
     res.status(200).json({
       message: `Estado del equipo ${id} actualizado a '${nuevoEstado}'`,
       equipo: updatedEquipo
     });
 
   } catch (err) {
-    // Manejo de errores de Prisma (ej: equipo no encontrado)
-    if (err.code === 'P2025') {
-      return res.status(404).json({ error: `Equipo con ID ${req.params.id} no encontrado.` });
-    }
     console.error("Error al actualizar el estado del equipo:", err);
     res.status(500).json({ error: err.message || "Ocurrió un error en el servidor." });
   }
@@ -534,6 +548,22 @@ exports.listarAuditLog = async (req, res) => {
     res.status(200).json(logs);
   } catch (err) {
     console.error('Error al obtener audit log:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.listarHistorialEstado = async (req, res) => {
+  const prisma = req.prisma;
+  const equipoId = parseInt(req.params.id);
+  if (isNaN(equipoId)) return res.status(400).json({ error: 'ID inválido' });
+  try {
+    const historial = await prisma.historialEstadoEquipo.findMany({
+      where: { equipoId },
+      orderBy: { fecha: 'desc' },
+    });
+    res.status(200).json(historial);
+  } catch (err) {
+    console.error('Error al obtener historial de estados:', err);
     res.status(500).json({ error: err.message });
   }
 };

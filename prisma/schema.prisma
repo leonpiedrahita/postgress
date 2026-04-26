@@ -129,6 +129,7 @@ model Equipo {
   ubicacionDireccion    String // Dirección de la ubicación
   estado                String // Estado del equipo
   historialPropietarios HistorialPropietario[] // Relación con HistorialPropietario
+  historialEstados      HistorialEstadoEquipo[] // Relación con historial de estados
   fechaDeInstalacion    String? // Fecha de instalación (puede ser opcional)
   fechaDePreventivo     DateTime? // Fecha de preventivo (puede ser opcional)
   placaDeInventario     String // Placa de inventario
@@ -179,6 +180,18 @@ model HistorialPropietario {
   tipoDeContrato     String // Tipo de contrato
 
   @@map("historial_propietarios") // Nombre de la tabla en la base de datos
+}
+
+model HistorialEstadoEquipo {
+  id             Int      @id @default(autoincrement())
+  equipoId       Int
+  equipo         Equipo   @relation(fields: [equipoId], references: [id])
+  estadoAnterior String?
+  estadoNuevo    String
+  usuarioNombre  String
+  fecha          DateTime @default(now())
+
+  @@map("historial_estados_equipo")
 }
 
 model DocumentoLegal {

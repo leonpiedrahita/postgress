@@ -11,10 +11,24 @@ const WA_URL = `https://graph.facebook.com/${process.env.WHATSAPP_VERSION}/${pro
  * @param {'ingreso'|'etapa'} tipo
  * @returns {Promise<string[]>}
  */
+const ETAPA_A_TIPO = {
+  'Cuarentena':                       'etapa_cuarentena',
+  'Soporte ingeniería':               'etapa_soporte_ingenieria',
+  'Soporte aplicaciones':             'etapa_soporte_aplicaciones',
+  'Listo para despacho':              'etapa_listo_despacho',
+  'Cotización solicitada':            'etapa_cotizacion_solicitada',
+  'Cotización aprobada':              'etapa_cotizacion_aprobada',
+  'Pdte. de repuestos':               'etapa_pdte_repuestos',
+  'Pdte. de aprobación de repuestos': 'etapa_pdte_aprobacion',
+  'Despachado':                       'etapa_despachado',
+  'Finalizado':                       'etapa_finalizado',
+  'Cancelado':                        'etapa_cancelado',
+};
+
 async function getRolesHabilitados(tipo) {
   const filas = await prisma.$queryRaw`
     SELECT rol FROM configuracion_notificaciones
-    WHERE tipo_notificacion = ${tipo} AND habilitado = true
+    WHERE "tipoNotificacion" = ${tipo} AND habilitado = true
   `;
   const roles = filas.map(f => f.rol);
   if (!roles.includes('administrador')) roles.push('administrador');
@@ -195,10 +209,13 @@ async function notificarCambioEtapa(ingresoId, datosEtapa) {
       return;
     }
 
-    // Seleccionar configuración según si la nueva etapa es Despachado o no
-    const tipoCfg = datosEtapa.etapaNueva === 'Despachado' ? 'etapa_despachado' : 'etapa';
-    const rolesHabilitados = await getRolesHabilitados(tipoCfg);
+    const tipoCfg = ETAPA_A_TIPO[datosEtapa.etapaNueva];
+    if (!tipoCfg) {
+      console.log(`[WhatsApp] Etapa "${datosEtapa.etapaNueva}" sin tipo de notificación configurado.`);
+      return;
+    }
 
+    const rolesHabilitados = await getRolesHabilitados(tipoCfg);
     if (!rolesHabilitados.length) {
       console.warn(`[WhatsApp] Ningún rol habilitado para notificaciones de ${tipoCfg}.`);
       return;
