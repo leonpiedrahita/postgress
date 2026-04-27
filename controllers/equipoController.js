@@ -634,6 +634,64 @@ exports.importarAtencion = async (req, res) => {
   }
 };
 
+exports.importarAsesor = async (req, res) => {
+  const prisma = req.prisma;
+  // registros: [{ nit: string, asesor: string }]
+  const { registros } = req.body;
+
+  if (!Array.isArray(registros) || registros.length === 0) {
+    return res.status(400).json({ error: 'Se requiere un array de registros' });
+  }
+
+  // Construir mapa NIT → asesor
+  const mapaAsesor = new Map();
+  for (const r of registros) {
+    mapaAsesor.set(String(r.nit).trim(), String(r.asesor || '').trim());
+  }
+
+  try {
+    const equipos = await prisma.equipo.findMany({
+      where: { estado: { not: 'Inactivo' } },
+      select: {
+        id: true,
+        cliente: { select: { nit: true } },
+        proveedor: { select: { nit: true } },
+      },
+    });
+
+    let actualizados = 0;
+    let enBlanco = 0;
+
+    const actualizaciones = equipos.map((equipo) => {
+      const nitProveedor = String(equipo.proveedor?.nit || '').trim();
+      const esBiosystems = nitProveedor === NIT_BIOSYSTEMS;
+      const nitBuscar = esBiosystems
+        ? String(equipo.cliente?.nit || '').trim()
+        : nitProveedor;
+
+      const asesor = mapaAsesor.has(nitBuscar) ? mapaAsesor.get(nitBuscar) : null;
+      if (asesor) actualizados++; else enBlanco++;
+
+      return prisma.equipo.update({
+        where: { id: equipo.id },
+        data: { asesor },
+      });
+    });
+
+    await prisma.$transaction(actualizaciones);
+
+    res.status(200).json({
+      message: 'Importación de asesores completada',
+      actualizados,
+      enBlanco,
+      total: equipos.length,
+    });
+  } catch (err) {
+    console.error('Error al importar asesores:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
 exports.listarPreventivos = async (req, res) => {
   const prisma = req.prisma;
   try {

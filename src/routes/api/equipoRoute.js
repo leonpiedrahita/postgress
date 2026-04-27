@@ -28,5 +28,6 @@ router.get("/preventivos",auth.verificarUsuarioLum,equipoController.listarPreven
 router.get("/auditlog/:id",auth.verificarAdmin,equipoController.listarAuditLog)
 router.patch("/actualizaratencion/:id",auth.verificarAdmin,equipoController.actualizarAtencion)
 router.post("/importaratencion",auth.verificarAdmin,equipoController.importarAtencion)
+router.post("/importarasesor",auth.verificarAdmin,equipoController.importarAsesor)
 
 module.exports = router;
