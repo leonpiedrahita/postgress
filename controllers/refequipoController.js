@@ -6,7 +6,7 @@ exports.listar = async (req, res) => {
     // Obtener todos los refEquipos incluyendo los documentos legales relacionados
     const equipos = await prisma.refEquipo.findMany({
       include: {
-        documentosLegales: true, // Incluir los documentos legales relacionados
+        documentosLegales: { where: { eliminado: false } }, // Excluye documentos eliminados (soft delete)
       },
     });
 
@@ -26,7 +26,7 @@ exports.listaruno = async (req, res) => {
     const equipo = await prisma.refEquipo.findUnique({
       where: { id },
       include: {
-        documentosLegales: true, // Incluye los documentos legales
+        documentosLegales: { where: { eliminado: false } }, // Excluye documentos eliminados (soft delete)
       },
     });
 

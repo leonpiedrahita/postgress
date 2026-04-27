@@ -22,6 +22,9 @@ const whatsappRouter = require('./api/whatsappRoute');
 
 const borradorRouter = require('./api/borradorRoute');
 
+const configuracionRouter = require('./api/configuracionRoute');
+
+// const estadisticasRouter = require('./api/estadisticasRoute');
 
 //Asocio el siguiente slash a api
 //Queda así
@@ -43,5 +46,8 @@ router.use("/whatsapp", whatsappRouter);//api/whatsapp/webhook
 
 router.use("/borrador", borradorRouter);//api/borrador
 
+router.use("/configuracion", configuracionRouter);//api/configuracion
+
+// router.use("/estadisticas", estadisticasRouter);//api/estadisticas
 
 module.exports = router;

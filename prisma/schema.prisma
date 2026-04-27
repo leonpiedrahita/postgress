@@ -131,6 +131,7 @@ model Equipo {
   atencion              String? // Atención: Autorizado, Cartera o MP
   asesor                String? // Nombre del asesor comercial (importado desde CSV)
   historialPropietarios HistorialPropietario[] // Relación con HistorialPropietario
+  historialEstados      HistorialEstadoEquipo[] // Relación con historial de estados
   fechaDeInstalacion    String? // Fecha de instalación (puede ser opcional)
   fechaDePreventivo     DateTime? // Fecha de preventivo (puede ser opcional)
   placaDeInventario     String // Placa de inventario
@@ -183,11 +184,24 @@ model HistorialPropietario {
   @@map("historial_propietarios") // Nombre de la tabla en la base de datos
 }
 
+model HistorialEstadoEquipo {
+  id             Int      @id @default(autoincrement())
+  equipoId       Int
+  equipo         Equipo   @relation(fields: [equipoId], references: [id])
+  estadoAnterior String?
+  estadoNuevo    String
+  usuarioNombre  String
+  fecha          DateTime @default(now())
+
+  @@map("historial_estados_equipo")
+}
+
 model DocumentoLegal {
   id              Int        @id @default(autoincrement()) // Clave primaria
   nombreDocumento String // Nombre del documento
   llaveDocumento  String // Llave del documento
   fecha           DateTime // Fecha del documento
+  eliminado       Boolean    @default(false) // Soft delete: oculta el documento sin borrar el registro ni el archivo en S3
   equipoId        Int? // Clave foránea para Equipo
   equipo          Equipo?    @relation(fields: [equipoId], references: [id]) // Relación con Equipo
   refEquipoId     Int? // Clave foránea para RefEquipo (puede ser opcional)
@@ -268,6 +282,16 @@ model Reporte {
   historialServicios HistorialServicio[] // Relación inversa con HistorialServicio
 
   @@map("reporte") // Opcional: Mapea el modelo a una tabla con un nombre específico
+}
+
+model ConfiguracionNotificacion {
+  id               Int     @id @default(autoincrement())
+  rol              String
+  tipoNotificacion String  // "ingreso" | "etapa"
+  habilitado       Boolean @default(true)
+
+  @@unique([rol, tipoNotificacion])
+  @@map("configuracion_notificaciones")
 }
 
 model Borrador {

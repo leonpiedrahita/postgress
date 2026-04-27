@@ -1,9 +1,39 @@
 const axios = require('axios');
-const { PrismaClient } = require('@prisma/client');
+const { getPrismaWithUser } = require('../src/prisma-client');
 
-const prisma = new PrismaClient();
+const prisma = getPrismaWithUser('sistema');
 
 const WA_URL = `https://graph.facebook.com/${process.env.WHATSAPP_VERSION}/${process.env.WHATSAPP_PHONE_ID}/messages`;
+
+
+/**
+ * Obtiene los roles habilitados para un tipo de notificación desde la BD.
+ * @param {'ingreso'|'etapa'} tipo
+ * @returns {Promise<string[]>}
+ */
+const ETAPA_A_TIPO = {
+  'Cuarentena':                       'etapa_cuarentena',
+  'Soporte ingeniería':               'etapa_soporte_ingenieria',
+  'Soporte aplicaciones':             'etapa_soporte_aplicaciones',
+  'Listo para despacho':              'etapa_listo_despacho',
+  'Cotización solicitada':            'etapa_cotizacion_solicitada',
+  'Cotización aprobada':              'etapa_cotizacion_aprobada',
+  'Pdte. de repuestos':               'etapa_pdte_repuestos',
+  'Pdte. de aprobación de repuestos': 'etapa_pdte_aprobacion',
+  'Despachado':                       'etapa_despachado',
+  'Finalizado':                       'etapa_finalizado',
+  'Cancelado':                        'etapa_cancelado',
+};
+
+async function getRolesHabilitados(tipo) {
+  const filas = await prisma.$queryRaw`
+    SELECT rol FROM configuracion_notificaciones
+    WHERE "tipoNotificacion" = ${tipo} AND habilitado = true
+  `;
+  const roles = filas.map(f => f.rol);
+  if (!roles.includes('administrador')) roles.push('administrador');
+  return roles;
+}
 
 /**
  * Valida formato E.164 (+57XXXXXXXXXX)
@@ -18,7 +48,7 @@ function esE164(numero) {
  * Envía un mensaje usando una plantilla aprobada por Meta.
  * @param {string} destinatario - Número en formato E.164
  * @param {string} nombrePlantilla - Nombre exacto de la plantilla en Meta
- * @param {string} idioma - Código de idioma (ej: 'es')
+ * @param {string} idioma - Código de idioma (ej: 'es_CO')
  * @param {Array} componentes - Array de componentes de la plantilla
  * @returns {Promise<object|null>}
  */
@@ -87,13 +117,21 @@ async function enviarMensajeTexto(destinatario, texto) {
 }
 
 /**
- * Notifica a los administradores cuando se registra un nuevo ingreso de equipo.
- * Usa la plantilla aprobada "gomaint_nuevo_ingreso".
- * @param {number} ingresoId - ID del ingreso recién creado
+ * Notifica cuando se registra un nuevo ingreso de equipo.
+ * Usa la plantilla "gomaint_nuevo_ingreso".
+ * Destinatarios: roles habilitados para tipo "ingreso" en la tabla de configuración.
+ * @param {number} ingresoId
  * @returns {Promise<void>}
  */
 async function notificarIngresoEquipo(ingresoId) {
   try {
+    const rolesHabilitados = await getRolesHabilitados('ingreso');
+
+    if (!rolesHabilitados.length) {
+      console.warn('[WhatsApp] Ningún rol habilitado para notificaciones de ingreso.');
+      return;
+    }
+
     const ingreso = await prisma.ingreso.findUnique({
       where: { id: ingresoId },
       include: {
@@ -107,16 +145,16 @@ async function notificarIngresoEquipo(ingresoId) {
       return;
     }
 
-    const admins = await prisma.usuario.findMany({
+    const usuarios = await prisma.usuario.findMany({
       where: {
-        rol: { in: ['administrador', 'soporte', 'lumira', 'cotizaciones', 'bodega'] },
+        rol: { in: rolesHabilitados },
         estado: 1,
         telefono: { not: null },
       },
       select: { nombre: true, telefono: true },
     });
 
-    if (!admins.length) {
+    if (!usuarios.length) {
       console.warn('[WhatsApp] No hay usuarios con teléfono registrado para notificar nuevo ingreso.');
       return;
     }
@@ -138,8 +176,8 @@ async function notificarIngresoEquipo(ingresoId) {
       },
     ];
 
-    for (const admin of admins) {
-      await enviarPlantilla(admin.telefono, 'gomaint_nuevo_ingreso', 'es_CO', componentes);
+    for (const u of usuarios) {
+      await enviarPlantilla(u.telefono, 'gomaint_nuevo_ingreso', 'es_CO', componentes);
     }
   } catch (err) {
     console.error('[WhatsApp] Error en notificarIngresoEquipo:', err.message);
@@ -147,84 +185,50 @@ async function notificarIngresoEquipo(ingresoId) {
 }
 
 /**
- * Notifica a los usuarios (excepto lumira) cuando un equipo cambia a estado 'Disponible' o 'Disp. Pdte. MP.'.
- * Usa la plantilla aprobada "gomaint_equipo_disponible".
- * @param {number} equipoId - ID del equipo cuyo estado cambió
- * @param {string} nuevoEstado - Nuevo estado del equipo
- * @param {string} [observacion] - Observación de la etapa (opcional, se usa si se pasa directo)
- * @param {string} [ubicacion] - Ubicación del equipo (opcional)
- * @returns {Promise<void>}
- */
-async function notificarEquipoDisponible(equipoId, nuevoEstado, observacion, ubicacion) {
-  try {
-    const equipo = await prisma.equipo.findUnique({
-      where: { id: equipoId },
-      include: {
-        ingresos: {
-          orderBy: { id: 'desc' },
-          take: 1,
-          include: { etapas: { orderBy: { id: 'desc' }, take: 1 } },
-        },
-      },
-    });
-
-    if (!equipo) {
-      console.warn(`[WhatsApp] Equipo ${equipoId} no encontrado para notificación de disponibilidad.`);
-      return;
-    }
-
-    const usuarios = await prisma.usuario.findMany({
-      where: {
-        rol: { in: ['administrador', 'soporte', 'cotizaciones', 'comercial', 'bodega', 'calidad'] },
-        estado: 1,
-        telefono: { not: null },
-      },
-      select: { telefono: true },
-    });
-
-    if (!usuarios.length) {
-      console.warn('[WhatsApp] No hay usuarios con teléfono registrado para notificar disponibilidad.');
-      return;
-    }
-
-    const ultimaEtapa = equipo.ingresos[0]?.etapas[0];
-
-    const componentes = [
-      {
-        type: 'body',
-        parameters: [
-          { type: 'text', text: nuevoEstado },
-          { type: 'text', text: `${equipo.nombre} - ${equipo.serie}` },
-          { type: 'text', text: ubicacion || ultimaEtapa?.ubicacion || 'Sin ubicacion' },
-          { type: 'text', text: observacion || ultimaEtapa?.comentario || 'Sin observaciones' },
-        ],
-      },
-    ];
-
-    for (const u of usuarios) {
-      await enviarPlantilla(u.telefono, 'gomaint_equipo_disponible', 'es_CO', componentes);
-    }
-  } catch (err) {
-    console.error('[WhatsApp] Error en notificarEquipoDisponible:', err.message);
-  }
-}
-
-const ESTADOS_DISPONIBLE = ['En servicio', 'Disponible', 'Disp. Pdte. MP.'];
-
-/**
- * Notifica el avance de etapa en un ingreso.
- * No envía si el equipo ya cambió a estado Disponible/Disp. Pdte. MP. (esa notificación ya se envió).
- * Usa la plantilla "gomaint_notificacion".
+ * Notifica el cambio de etapa en un ingreso.
+ * Usa la plantilla "gomaint_notificacion_estado_y_etapa".
+ *
+ * Reglas fijas (independientes de la configuración):
+ * - Sin notificación si etapaNueva === 'Finalizado' y etapaFinalizada === 'Despachado'
+ * - Sin notificación si etapaFinalizada === 'Desinfección'
+ * - bodega solo recibe si etapaNueva es 'Listo para despacho' o 'Despachado'
+ *
  * @param {number} ingresoId
- * @param {{ etapaFinalizada: string, etapaNueva: string, ubicacion: string, comentario: string, responsable: string }} datosEtapa
+ * @param {{ etapaFinalizada: string, etapaNueva: string, ubicacion: string, comentario: string, responsable: string, estadoEquipo?: string }} datosEtapa
  * @returns {Promise<void>}
  */
 async function notificarCambioEtapa(ingresoId, datosEtapa) {
   try {
+    if (datosEtapa.etapaNueva === 'Finalizado' && datosEtapa.etapaFinalizada === 'Despachado') {
+      console.log('[WhatsApp] Etapa Finalizado post-Despachado — omitiendo notificación.');
+      return;
+    }
+
+    if (datosEtapa.etapaFinalizada === 'Desinfección') {
+      console.log('[WhatsApp] Salida de Desinfección — omitiendo notificación.');
+      return;
+    }
+
+    const tipoCfg = ETAPA_A_TIPO[datosEtapa.etapaNueva];
+    if (!tipoCfg) {
+      console.log(`[WhatsApp] Etapa "${datosEtapa.etapaNueva}" sin tipo de notificación configurado.`);
+      return;
+    }
+
+    const rolesHabilitados = await getRolesHabilitados(tipoCfg);
+    if (!rolesHabilitados.length) {
+      console.warn(`[WhatsApp] Ningún rol habilitado para notificaciones de ${tipoCfg}.`);
+      return;
+    }
+
+    const roles = rolesHabilitados;
+
     const ingreso = await prisma.ingreso.findUnique({
       where: { id: ingresoId },
       include: {
-        equipo: { include: { cliente: true } },
+        equipo: {
+          include: { cliente: { include: { sedePrincipal: true } } },
+        },
       },
     });
 
@@ -233,18 +237,8 @@ async function notificarCambioEtapa(ingresoId, datosEtapa) {
       return;
     }
 
-    // Si el equipo ya está disponible, esa notificación ya fue enviada
-    if (ESTADOS_DISPONIBLE.includes(ingreso.equipo?.estado)) {
-      console.log(`[WhatsApp] Equipo en estado '${ingreso.equipo.estado}' — omitiendo notificación de etapa.`);
-      return;
-    }
-
     const usuarios = await prisma.usuario.findMany({
-      where: {
-        rol: { in: ['administrador', 'soporte', 'cotizaciones', 'comercial', 'bodega', 'calidad'] },
-        estado: 1,
-        telefono: { not: null },
-      },
+      where: { rol: { in: roles }, estado: 1, telefono: { not: null } },
       select: { telefono: true },
     });
 
@@ -254,27 +248,33 @@ async function notificarCambioEtapa(ingresoId, datosEtapa) {
     }
 
     const equipo = ingreso.equipo;
+    const cliente = equipo.cliente;
+    const ciudad = cliente?.sedePrincipal?.ciudad || 'Sin ciudad';
+    const estadoEquipo = datosEtapa.estadoEquipo || equipo.estado || 'Sin estado';
+
     const componentes = [
       {
         type: 'body',
         parameters: [
-          { type: 'text', text: equipo.cliente?.nombre || 'Sin cliente' },
+          { type: 'text', text: cliente?.nombre || 'Sin cliente' },
           { type: 'text', text: `${equipo.nombre} - ${equipo.serie}` },
+          { type: 'text', text: estadoEquipo },
           { type: 'text', text: datosEtapa.etapaFinalizada || 'N/A' },
           { type: 'text', text: datosEtapa.etapaNueva || 'Sin etapa' },
-          { type: 'text', text: datosEtapa.ubicacion || 'Sin ubicacion' },
+          { type: 'text', text: datosEtapa.ubicacion || 'Sin ubicación' },
           { type: 'text', text: datosEtapa.comentario || 'Sin observaciones' },
           { type: 'text', text: datosEtapa.responsable || 'Sin responsable' },
+          { type: 'text', text: ciudad },
         ],
       },
     ];
 
     for (const u of usuarios) {
-      await enviarPlantilla(u.telefono, 'gomaint_notificacion', 'es_CO', componentes);
+      await enviarPlantilla(u.telefono, 'gomaint_notificacion_estado_y_etapa', 'es_CO', componentes);
     }
   } catch (err) {
     console.error('[WhatsApp] Error en notificarCambioEtapa:', err.message);
   }
 }
 
-module.exports = { enviarPlantilla, enviarMensajeTexto, notificarIngresoEquipo, notificarEquipoDisponible, notificarCambioEtapa };
+module.exports = { enviarPlantilla, enviarMensajeTexto, notificarIngresoEquipo, notificarCambioEtapa };

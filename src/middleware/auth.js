@@ -36,13 +36,13 @@ const verificarRol = (rolesPermitidos) => {
 
 module.exports = {
   verificarAdmin: verificarRol(['administrador']),
-  verificarAdminCot: verificarRol(['administrador', 'cotizaciones']),
+  verificarAdminCot: verificarRol(['administrador', 'cotizaciones', 'ventas', 'ingresos']),
   verificarAdminCal: verificarRol(['administrador', 'calidad']),
-  verificarAdminSopCom: verificarRol(['administrador', 'soporte', 'comercial']),
-  verificarAdminCalCot: verificarRol(['administrador', 'cotizaciones', 'calidad']),
-  verificarAdminSopComCot: verificarRol(['administrador', 'soporte', 'comercial', 'cotizaciones']),
-  verificarAdminSopCot: verificarRol(['administrador', 'soporte', 'cotizaciones']),
-  verificarAdminSopCotBodLum: verificarRol(['administrador', 'soporte', 'cotizaciones','bodega','lumira']),
-  verificarUsuario: verificarRol(['administrador', 'cotizaciones', 'calidad', 'soporte', 'comercial','bodega']),
-  verificarUsuarioLum: verificarRol(['administrador', 'cotizaciones', 'calidad', 'soporte', 'comercial','bodega','lumira']),
+  verificarAdminSopCom: verificarRol(['administrador', 'soporte', 'aplicaciones', 'comercial']),
+  verificarAdminCalCot: verificarRol(['administrador', 'cotizaciones', 'ventas', 'ingresos', 'calidad', 'aplicaciones']),
+  verificarAdminSopComCot: verificarRol(['administrador', 'soporte', 'aplicaciones', 'comercial', 'cotizaciones', 'ventas', 'ingresos']),
+  verificarAdminSopCot: verificarRol(['administrador', 'soporte', 'aplicaciones', 'cotizaciones', 'ventas', 'ingresos']),
+  verificarAdminSopCotBodLum: verificarRol(['administrador', 'soporte', 'aplicaciones', 'cotizaciones', 'ventas', 'ingresos', 'bodega', 'lumira']),
+  verificarUsuario: verificarRol(['administrador', 'cotizaciones', 'ventas', 'ingresos', 'calidad', 'soporte', 'aplicaciones', 'comercial', 'bodega']),
+  verificarUsuarioLum: verificarRol(['administrador', 'cotizaciones', 'ventas', 'ingresos', 'calidad', 'soporte', 'aplicaciones', 'comercial', 'bodega', 'lumira']),
 };

@@ -16,7 +16,7 @@ exports.listar = async (req, res) => {
         proveedor: true, // Incluye información del proveedor 
         referencia: true, // Incluye información de la referencia
         historialDeServicios: true, // Incluye el historial de servicios
-        documentosLegales: true, // Incluye documentos legales
+        documentosLegales: { where: { eliminado: false } }, // Excluye documentos eliminados (soft delete)
         historialPropietarios: {
           include: {
             cliente: true, // Incluye información del cliente en el historial
@@ -124,8 +124,8 @@ exports.actualizar = async (req, res) => {
       return res.status(404).json({ error: "Equipo no encontrado" });
     }
 
-    // Transacción: update + create
-    const [updatedEquipo, historial] = await prisma.$transaction([
+    // Transacción: update + historialPropietario + historialEstado (si cambió)
+    const ops = [
       prisma.equipo.update({
         where: { id },
         data: {
@@ -152,7 +152,20 @@ exports.actualizar = async (req, res) => {
           equipoId: id,
         },
       }),
-    ]);
+    ];
+
+    if (equipoActual.estado !== estado) {
+      ops.push(prisma.historialEstadoEquipo.create({
+        data: {
+          equipoId: id,
+          estadoAnterior: equipoActual.estado,
+          estadoNuevo: estado,
+          usuarioNombre: validationResponse.nombre || 'sistema',
+        },
+      }));
+    }
+
+    const [updatedEquipo, historial] = await prisma.$transaction(ops);
 
     res.status(200).json({ message: "Equipo actualizado", equipo: updatedEquipo, historial });
 
@@ -174,45 +187,39 @@ exports.actualizarEstado = async (req, res) => {
     const id = parseInt(req.params.id);
     const { nuevoEstado } = req.body;
 
-    // 2. Validación de campos obligatorios
     if (!nuevoEstado) {
       return res.status(400).json({ error: "El campo 'nuevoEstado' es obligatorio" });
     }
 
-    // 3. Actualizar el estado del equipo
-    const updatedEquipo = await prisma.equipo.update({
-      where: { id },
-      data: {
-        estado: nuevoEstado,
-        // El campo 'updatedAt' se actualiza automáticamente gracias a @updatedAt en el schema
-      },
-      select: { // Seleccionamos solo los campos relevantes para la respuesta
-        id: true,
-        nombre: true,
-        serie: true,
-        estado: true,
-        updatedAt: true,
-      }
-    });
-
-    // 4. Notificación WhatsApp si el equipo queda disponible
-    const ESTADOS_DISPONIBLE = ['En servicio', 'Disponible', 'Disp. Pdte. MP.'];
-    if (ESTADOS_DISPONIBLE.includes(nuevoEstado)) {
-      const { notificarEquipoDisponible } = require('../services/whatsappService');
-      notificarEquipoDisponible(id, nuevoEstado).catch(console.error);
+    const equipoActual = await prisma.equipo.findUnique({ where: { id }, select: { estado: true } });
+    if (!equipoActual) {
+      return res.status(404).json({ error: `Equipo con ID ${id} no encontrado.` });
     }
 
-    // 5. Respuesta exitosa
+    const validationResponse = await tokenServices.decode(req.headers.token);
+
+    const [updatedEquipo] = await prisma.$transaction([
+      prisma.equipo.update({
+        where: { id },
+        data: { estado: nuevoEstado },
+        select: { id: true, nombre: true, serie: true, estado: true, updatedAt: true },
+      }),
+      prisma.historialEstadoEquipo.create({
+        data: {
+          equipoId: id,
+          estadoAnterior: equipoActual.estado,
+          estadoNuevo: nuevoEstado,
+          usuarioNombre: validationResponse?.nombre || 'sistema',
+        },
+      }),
+    ]);
+
     res.status(200).json({
       message: `Estado del equipo ${id} actualizado a '${nuevoEstado}'`,
       equipo: updatedEquipo
     });
 
   } catch (err) {
-    // Manejo de errores de Prisma (ej: equipo no encontrado)
-    if (err.code === 'P2025') {
-      return res.status(404).json({ error: `Equipo con ID ${req.params.id} no encontrado.` });
-    }
     console.error("Error al actualizar el estado del equipo:", err);
     res.status(500).json({ error: err.message || "Ocurrió un error en el servidor." });
   }
@@ -296,6 +303,35 @@ exports.registrardocumento = async (req, res) => {
   }
 };
 
+/**
+ * Soft-delete de un documento legal.
+ * Marca eliminado=true sin borrar el registro ni el archivo en S3.
+ */
+exports.eliminarDocumentoLegal = async (req, res) => {
+  const prisma = req.prisma;
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'El parámetro id debe ser un número válido.' });
+    }
+
+    const documento = await prisma.documentoLegal.findUnique({ where: { id } });
+    if (!documento) {
+      return res.status(404).json({ error: `No se encontró el documento con id ${id}.` });
+    }
+
+    await prisma.documentoLegal.update({
+      where: { id },
+      data: { eliminado: true },
+    });
+
+    res.status(200).json({ message: 'Documento eliminado correctamente.' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
 // Buscar equipos
 exports.buscar = async (req, res) => {
   const prisma = req.prisma;
@@ -337,7 +373,7 @@ exports.listaruno = async (req, res) => {
           }, // Incluye los documentos de soporte en el historial de servicios
 
         }, // Incluye el historial de servicios
-        documentosLegales: true, // Incluye documentos legales
+        documentosLegales: { where: { eliminado: false } }, // Excluye documentos eliminados (soft delete)
         historialPropietarios: {
           include: {
             cliente: true, // Incluye información del cliente en el historial
@@ -430,7 +466,7 @@ exports.buscarequipos = async (req, res) => {
           cliente: { select: { id: true, nombre: true, nit: true } },
           proveedor: { select: { id: true, nombre: true, nit: true } },
           referencia: { select: { id: true, periodicidadmantenimiento: true } },
-          documentosLegales: { select: { id: true } },
+          documentosLegales: { where: { eliminado: false }, select: { id: true } },
           historialPropietarios: {
             include: {
               cliente: true,
@@ -688,6 +724,22 @@ exports.importarAsesor = async (req, res) => {
     });
   } catch (err) {
     console.error('Error al importar asesores:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.listarHistorialEstado = async (req, res) => {
+  const prisma = req.prisma;
+  const equipoId = parseInt(req.params.id);
+  if (isNaN(equipoId)) return res.status(400).json({ error: 'ID inválido' });
+  try {
+    const historial = await prisma.historialEstadoEquipo.findMany({
+      where: { equipoId },
+      orderBy: { fecha: 'desc' },
+    });
+    res.status(200).json(historial);
+  } catch (err) {
+    console.error('Error al obtener historial de estados:', err);
     res.status(500).json({ error: err.message });
   }
 };

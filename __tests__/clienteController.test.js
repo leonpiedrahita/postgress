@@ -269,3 +269,84 @@ describe('agregarsede — error 500', () => {
     expect(res.status).toHaveBeenCalledWith(500);
   });
 });
+
+// ─── listaruno ────────────────────────────────────────────────────────────────
+describe('listaruno', () => {
+  it('retorna 200 con el cliente encontrado', async () => {
+    const cliente = { id: 1, nombre: 'Hospital Central', sedes: [], sedePrincipal: null };
+    mockPrisma.cliente.findUnique.mockResolvedValue(cliente);
+
+    const req = mockReq({ params: { id: '1' } });
+    const res = mockRes();
+    await clienteController.listaruno(req, res);
+
+    expect(mockPrisma.cliente.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 1 } })
+    );
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(cliente);
+  });
+
+  it('retorna 404 si el cliente no existe', async () => {
+    mockPrisma.cliente.findUnique.mockResolvedValue(null);
+    const req = mockReq({ params: { id: '999' } });
+    const res = mockRes();
+    await clienteController.listaruno(req, res);
+    expect(res.status).toHaveBeenCalledWith(404);
+  });
+
+  it('retorna 500 si Prisma lanza error', async () => {
+    mockPrisma.cliente.findUnique.mockRejectedValue(new Error('DB error'));
+    const res = mockRes();
+    await clienteController.listaruno(mockReq({ params: { id: '1' } }), res);
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+// ─── actualizarsede ───────────────────────────────────────────────────────────
+describe('actualizarsede', () => {
+  it('actualiza la sede y retorna 200', async () => {
+    const sede = { id: 2, ciudad: 'Cali', direccion: 'Cra 5', activa: true, clienteId: 1 };
+    mockPrisma.sede.findUnique.mockResolvedValue(sede);
+    mockPrisma.sede.update.mockResolvedValue({ ...sede, ciudad: 'Medellín' });
+
+    const req = mockReq({ params: { sedeId: '2' }, body: { ciudad: 'Medellín' } });
+    const res = mockRes();
+    await clienteController.actualizarsede(req, res);
+
+    expect(mockPrisma.sede.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 2 } })
+    );
+    expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  it('retorna 404 si la sede no existe', async () => {
+    mockPrisma.sede.findUnique.mockResolvedValue(null);
+    const req = mockReq({ params: { sedeId: '999' }, body: { ciudad: 'Cali' } });
+    const res = mockRes();
+    await clienteController.actualizarsede(req, res);
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(mockPrisma.sede.update).not.toHaveBeenCalled();
+  });
+
+  it('solo actualiza los campos enviados en el body', async () => {
+    mockPrisma.sede.findUnique.mockResolvedValue({ id: 3, ciudad: 'Bogotá', direccion: 'Cll 1' });
+    mockPrisma.sede.update.mockResolvedValue({ id: 3, ciudad: 'Bogotá', direccion: 'Av 80' });
+
+    const req = mockReq({ params: { sedeId: '3' }, body: { direccion: 'Av 80' } });
+    const res = mockRes();
+    await clienteController.actualizarsede(req, res);
+
+    const callArg = mockPrisma.sede.update.mock.calls[0][0];
+    expect(callArg.data).not.toHaveProperty('ciudad'); // ciudad no enviado → no debe actualizarse
+    expect(callArg.data).toHaveProperty('direccion', 'Av 80');
+  });
+
+  it('retorna 500 si Prisma lanza error', async () => {
+    mockPrisma.sede.findUnique.mockResolvedValue({ id: 1 });
+    mockPrisma.sede.update.mockRejectedValue(new Error('DB error'));
+    const res = mockRes();
+    await clienteController.actualizarsede(mockReq({ params: { sedeId: '1' }, body: {} }), res);
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});

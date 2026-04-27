@@ -97,6 +97,9 @@ router.post(
     }
   );
 
+// Soft-delete de documento legal (no elimina en S3 ni en BD, solo lo oculta)
+router.patch('/documentolegal/:id/eliminar', auth.verificarAdminCot, equipoController.eliminarDocumentoLegal);
+
 // Buscar objetos en S3
 router.get('/buscar',auth.verificarUsuario, s3Controller.buscar);
 

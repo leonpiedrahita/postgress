@@ -436,3 +436,85 @@ describe('listarIngresosPorNombreDeCliente', () => {
     expect(res.status).toHaveBeenCalledWith(500);
   });
 });
+
+// ─── listarPorEquipo ──────────────────────────────────────────────────────────
+describe('listarPorEquipo', () => {
+  it('retorna 200 con los ingresos del equipo', async () => {
+    const ingresos = [{ id: 1, equipoId: 3, etapas: [] }];
+    mockPrisma.ingreso.findMany.mockResolvedValue(ingresos);
+
+    const req = mockReq({ params: { equipoId: '3' } });
+    const res = mockRes();
+    await ingresoController.listarPorEquipo(req, res);
+
+    expect(mockPrisma.ingreso.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { equipoId: 3 } })
+    );
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(ingresos);
+  });
+
+  it('retorna 200 con array vacío si el equipo no tiene ingresos', async () => {
+    mockPrisma.ingreso.findMany.mockResolvedValue([]);
+    const res = mockRes();
+    await ingresoController.listarPorEquipo(mockReq({ params: { equipoId: '7' } }), res);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith([]);
+  });
+
+  it('retorna 500 si Prisma lanza error', async () => {
+    mockPrisma.ingreso.findMany.mockRejectedValue(new Error('DB error'));
+    const res = mockRes();
+    await ingresoController.listarPorEquipo(mockReq({ params: { equipoId: '1' } }), res);
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+// ─── cerrar ───────────────────────────────────────────────────────────────────
+describe('cerrar', () => {
+  it('cierra el ingreso y retorna 200', async () => {
+    mockPrisma.ingreso.findUnique.mockResolvedValue({ id: 1, estado: 'Abierto' });
+    mockPrisma.ingreso.update.mockResolvedValue({ id: 1, estado: 'Cerrado' });
+
+    const req = mockReq({ params: { ingresoId: '1' } });
+    const res = mockRes();
+    await ingresoController.cerrar(req, res);
+
+    expect(mockPrisma.ingreso.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 1 }, data: { estado: 'Cerrado' } })
+    );
+    expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  it('retorna 404 si el ingreso no existe', async () => {
+    mockPrisma.ingreso.findUnique.mockResolvedValue(null);
+    const req = mockReq({ params: { ingresoId: '999' } });
+    const res = mockRes();
+    await ingresoController.cerrar(req, res);
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(mockPrisma.ingreso.update).not.toHaveBeenCalled();
+  });
+
+  it('retorna 400 si el ingreso ya está en estado Cerrado', async () => {
+    mockPrisma.ingreso.findUnique.mockResolvedValue({ id: 1, estado: 'Cerrado' });
+    const req = mockReq({ params: { ingresoId: '1' } });
+    const res = mockRes();
+    await ingresoController.cerrar(req, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(mockPrisma.ingreso.update).not.toHaveBeenCalled();
+  });
+
+  it('retorna 400 si el ingreso está en estado Finalizado', async () => {
+    mockPrisma.ingreso.findUnique.mockResolvedValue({ id: 2, estado: 'Finalizado' });
+    const res = mockRes();
+    await ingresoController.cerrar(mockReq({ params: { ingresoId: '2' } }), res);
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it('retorna 500 si Prisma lanza error', async () => {
+    mockPrisma.ingreso.findUnique.mockRejectedValue(new Error('DB error'));
+    const res = mockRes();
+    await ingresoController.cerrar(mockReq({ params: { ingresoId: '1' } }), res);
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});

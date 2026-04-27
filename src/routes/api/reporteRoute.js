@@ -27,4 +27,7 @@ router.post("/registrarexterno",auth.verificarAdminSopCom,reporteController.regi
 //.com/api/usuario/actualizar/id del elemento de la colección que quiero modificar
 router.patch("/actualizar/:id",auth.verificarAdminSopCom,reporteController.actualizar);
 
+// Historial de servicios de un equipo específico
+// router.get("/equipo/:equipoId", auth.verificarUsuario, reporteController.listarPorEquipo);
+
 module.exports = router;

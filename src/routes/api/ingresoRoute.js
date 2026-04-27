@@ -22,4 +22,10 @@ router.post('/registrar',auth.verificarUsuarioLum, ingresoController.registrarIn
 // Ruta para agregar una etapa a un ingreso
 router.post('/agregaretapa/:ingresoId',auth.verificarUsuarioLum, ingresoController.agregarEtapa);
 
+// Ingresos de un equipo específico
+// router.get('/equipo/:equipoId', auth.verificarUsuarioLum, ingresoController.listarPorEquipo);
+
+// Cerrar un ingreso
+// router.patch('/cerrar/:ingresoId', auth.verificarUsuarioLum, ingresoController.cerrar);
+
 module.exports = router;

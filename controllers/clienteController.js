@@ -175,6 +175,51 @@ exports.agregarsede = async (req, res) => {
     res.status(500).json({ error: err.message || err });
   }
 };
+exports.listaruno = async (req, res) => {
+  const prisma = req.prisma;
+  try {
+    const id = parseInt(req.params.id);
+    const cliente = await prisma.cliente.findUnique({
+      where: { id },
+      include: {
+        sedes: { where: { activa: true } },
+        sedePrincipal: true,
+        equiposComoPropietario: { include: { referencia: true } },
+        equiposComoCliente: { include: { referencia: true } },
+      },
+    });
+    if (!cliente) return res.status(404).json({ message: 'Cliente no encontrado' });
+    res.status(200).json(cliente);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message || err });
+  }
+};
+
+exports.actualizarsede = async (req, res) => {
+  const prisma = req.prisma;
+  try {
+    const sedeId = parseInt(req.params.sedeId);
+    const { ciudad, direccion, activa } = req.body;
+
+    const sede = await prisma.sede.findUnique({ where: { id: sedeId } });
+    if (!sede) return res.status(404).json({ message: 'Sede no encontrada' });
+
+    const sedeActualizada = await prisma.sede.update({
+      where: { id: sedeId },
+      data: {
+        ...(ciudad !== undefined && { ciudad }),
+        ...(direccion !== undefined && { direccion }),
+        ...(activa !== undefined && { activa }),
+      },
+    });
+    res.status(200).json({ message: 'Sede actualizada', sede: sedeActualizada });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message || err });
+  }
+};
+
 exports.eliminarsede = async (req, res) => {
   const prisma = req.prisma;
   try {
