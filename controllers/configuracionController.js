@@ -5,9 +5,9 @@ const prisma = getPrismaWithUser('sistema');
 exports.obtenerConfiguracion = async (req, res) => {
   try {
     const filas = await prisma.$queryRaw`
-      SELECT rol, "tipoNotificacion", habilitado
+      SELECT rol, tipo_notificacion, habilitado
       FROM configuracion_notificaciones
-      ORDER BY rol, "tipoNotificacion"
+      ORDER BY rol, tipo_notificacion
     `;
     res.status(200).json(filas);
   } catch (err) {
@@ -25,9 +25,9 @@ exports.guardarConfiguracionBulk = async (req, res) => {
     await prisma.$transaction(
       cambios.map(({ rol, tipoNotificacion, habilitado }) =>
         prisma.$executeRaw`
-          INSERT INTO configuracion_notificaciones (rol, "tipoNotificacion", habilitado)
+          INSERT INTO configuracion_notificaciones (rol, tipo_notificacion, habilitado)
           VALUES (${rol}, ${tipoNotificacion}, ${habilitado})
-          ON CONFLICT (rol, "tipoNotificacion") DO UPDATE SET habilitado = ${habilitado}
+          ON CONFLICT (rol, tipo_notificacion) DO UPDATE SET habilitado = ${habilitado}
         `
       )
     );
@@ -47,9 +47,9 @@ exports.actualizarConfiguracion = async (req, res) => {
 
   try {
     await prisma.$executeRaw`
-      INSERT INTO configuracion_notificaciones (rol, "tipoNotificacion", habilitado)
+      INSERT INTO configuracion_notificaciones (rol, tipo_notificacion, habilitado)
       VALUES (${rol}, ${tipoNotificacion}, ${habilitado})
-      ON CONFLICT (rol, "tipoNotificacion") DO UPDATE SET habilitado = ${habilitado}
+      ON CONFLICT (rol, tipo_notificacion) DO UPDATE SET habilitado = ${habilitado}
     `;
     res.status(200).json({ message: 'Configuración actualizada' });
   } catch (err) {
