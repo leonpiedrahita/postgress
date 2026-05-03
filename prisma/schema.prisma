@@ -199,6 +199,7 @@ model DocumentoLegal {
   nombreDocumento String // Nombre del documento
   llaveDocumento  String // Llave del documento
   fecha           DateTime // Fecha del documento
+  fechaDocumento  DateTime? // Fecha del documento (Acta de entrega, Acta de retiro, Contrato)
   eliminado       Boolean    @default(false) // Soft delete: oculta el documento sin borrar el registro ni el archivo en S3
   equipoId        Int? // Clave foránea para Equipo
   equipo          Equipo?    @relation(fields: [equipoId], references: [id]) // Relación con Equipo

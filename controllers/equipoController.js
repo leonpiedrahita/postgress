@@ -286,10 +286,12 @@ exports.registrardocumento = async (req, res) => {
   try {
     const id = parseInt(req.body.id_equipo);
     const nombredocumento = JSON.parse(req.body.nombredocumento);
+    const fechaDocumento = req.body.fechaDocumento ? new Date(req.body.fechaDocumento) : null;
     const nuevoDocumento = {
       nombreDocumento: nombredocumento,
       llaveDocumento: res.locals.llave,
       fecha: new Date(),
+      fechaDocumento,
     };
 
     await prisma.documentoLegal.create({
