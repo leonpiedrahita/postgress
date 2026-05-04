@@ -1,10 +1,9 @@
-const { getPrismaWithUser } = require('../src/prisma-client');
-
-const prisma = getPrismaWithUser('sistema');
+const ROLES_VALIDOS = ['soporte', 'aplicaciones', 'comercial', 'cotizaciones', 'calidad', 'bodega', 'lumira', 'ventas', 'ingresos'];
+const TIPOS_VALIDOS = ['ingreso', 'etapa', 'etapa_despachado'];
 
 exports.obtenerConfiguracion = async (req, res) => {
   try {
-    const filas = await prisma.$queryRaw`
+    const filas = await req.prisma.$queryRaw`
       SELECT rol, tipo_notificacion, habilitado
       FROM configuracion_notificaciones
       ORDER BY rol, tipo_notificacion
@@ -22,9 +21,9 @@ exports.guardarConfiguracionBulk = async (req, res) => {
     return res.status(400).json({ error: 'Se requiere un array de cambios' });
   }
   try {
-    await prisma.$transaction(
+    await req.prisma.$transaction(
       cambios.map(({ rol, tipoNotificacion, habilitado }) =>
-        prisma.$executeRaw`
+        req.prisma.$executeRaw`
           INSERT INTO configuracion_notificaciones (rol, tipo_notificacion, habilitado)
           VALUES (${rol}, ${tipoNotificacion}, ${habilitado})
           ON CONFLICT (rol, tipo_notificacion) DO UPDATE SET habilitado = ${habilitado}
@@ -44,9 +43,15 @@ exports.actualizarConfiguracion = async (req, res) => {
   if (!rol || !tipoNotificacion || typeof habilitado !== 'boolean') {
     return res.status(400).json({ error: 'Campos requeridos: rol, tipoNotificacion, habilitado (boolean)' });
   }
+  if (!ROLES_VALIDOS.includes(rol)) {
+    return res.status(400).json({ error: `Rol no permitido: ${rol}` });
+  }
+  if (!TIPOS_VALIDOS.includes(tipoNotificacion)) {
+    return res.status(400).json({ error: `Tipo de notificación no válido: ${tipoNotificacion}` });
+  }
 
   try {
-    await prisma.$executeRaw`
+    await req.prisma.$executeRaw`
       INSERT INTO configuracion_notificaciones (rol, tipo_notificacion, habilitado)
       VALUES (${rol}, ${tipoNotificacion}, ${habilitado})
       ON CONFLICT (rol, tipo_notificacion) DO UPDATE SET habilitado = ${habilitado}

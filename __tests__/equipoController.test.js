@@ -18,6 +18,7 @@ const mockPrisma = {
   historialPropietario: { create: jest.fn() },
   historialServicio: { create: jest.fn() },
   documentoLegal: { create: jest.fn() },
+  historialEstadoEquipo: { create: jest.fn() },
   $transaction: jest.fn(),
   $queryRaw: jest.fn(),
 };
@@ -154,7 +155,9 @@ describe('actualizar', () => {
 // ─── actualizarEstado ─────────────────────────────────────────────────────────
 describe('actualizarEstado', () => {
   it('actualiza el estado y retorna 200', async () => {
-    mockPrisma.equipo.update.mockResolvedValue({ id: 1, estado: 'Inactivo' });
+    mockPrisma.equipo.findUnique.mockResolvedValue({ id: 1, estado: 'Activo' });
+    tokenServices.decode.mockResolvedValue({ nombre: 'Test User' });
+    mockPrisma.$transaction.mockResolvedValue([{ id: 1, estado: 'Inactivo' }]);
     const req = mockReq({ params: { id: '1' }, body: { nuevoEstado: 'Inactivo' } });
     const res = mockRes();
     await equipoController.actualizarEstado(req, res);
@@ -168,10 +171,8 @@ describe('actualizarEstado', () => {
     expect(res.status).toHaveBeenCalledWith(400);
   });
 
-  it('retorna 404 si Prisma lanza P2025', async () => {
-    const err = new Error('Not found');
-    err.code = 'P2025';
-    mockPrisma.equipo.update.mockRejectedValue(err);
+  it('retorna 404 si el equipo no existe', async () => {
+    mockPrisma.equipo.findUnique.mockResolvedValue(null);
     const req = mockReq({ params: { id: '999' }, body: { nuevoEstado: 'Inactivo' } });
     const res = mockRes();
     await equipoController.actualizarEstado(req, res);
@@ -179,22 +180,22 @@ describe('actualizarEstado', () => {
   });
 
   it('actualiza el estado a Disponible y retorna 200 (sin notificación WP)', async () => {
-    mockPrisma.equipo.update.mockResolvedValue({ id: 1, estado: 'Disponible' });
-
+    mockPrisma.equipo.findUnique.mockResolvedValue({ id: 1, estado: 'Activo' });
+    tokenServices.decode.mockResolvedValue({ nombre: 'Test User' });
+    mockPrisma.$transaction.mockResolvedValue([{ id: 1, estado: 'Disponible' }]);
     const req = mockReq({ params: { id: '1' }, body: { nuevoEstado: 'Disponible' } });
     const res = mockRes();
     await equipoController.actualizarEstado(req, res);
-
     expect(res.status).toHaveBeenCalledWith(200);
   });
 
   it('actualiza el estado a En soporte y retorna 200', async () => {
-    mockPrisma.equipo.update.mockResolvedValue({ id: 1, estado: 'En soporte' });
-
+    mockPrisma.equipo.findUnique.mockResolvedValue({ id: 1, estado: 'Activo' });
+    tokenServices.decode.mockResolvedValue({ nombre: 'Test User' });
+    mockPrisma.$transaction.mockResolvedValue([{ id: 1, estado: 'En soporte' }]);
     const req = mockReq({ params: { id: '1' }, body: { nuevoEstado: 'En soporte' } });
     const res = mockRes();
     await equipoController.actualizarEstado(req, res);
-
     expect(res.status).toHaveBeenCalledWith(200);
   });
 });
@@ -281,7 +282,9 @@ describe('actualizar — error 500', () => {
 // ─── actualizarEstado — error 500 genérico ────────────────────────────────────
 describe('actualizarEstado — error genérico', () => {
   it('retorna 500 si Prisma lanza error no-P2025', async () => {
-    mockPrisma.equipo.update.mockRejectedValue(new Error('Generic DB error'));
+    mockPrisma.equipo.findUnique.mockResolvedValue({ id: 1, estado: 'Activo' });
+    tokenServices.decode.mockResolvedValue({ nombre: 'Test User' });
+    mockPrisma.$transaction.mockRejectedValue(new Error('Generic DB error'));
     const req = mockReq({ params: { id: '1' }, body: { nuevoEstado: 'Activo' } });
     const res = mockRes();
     await equipoController.actualizarEstado(req, res);
