@@ -289,8 +289,6 @@ exports.registrarIngreso = async (req, res) => {
  */
 exports.agregarEtapa = async (req, res) => {
   const prisma = req.prisma; // Obtener el cliente Prisma del request
-  console.log('parametros', req.params);
-  console.log('body', req.body);
   try {
     const { ingresoId } = req.params; // Obtener el ID del ingreso desde los parámetros
     const {

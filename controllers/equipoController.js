@@ -39,7 +39,6 @@ exports.listar = async (req, res) => {
 // Registrar un nuevo equipo
 exports.registrar = async (req, res) => {
   const prisma = req.prisma;
-  console.log('body', req.body);
   try {
     const validationResponse = await tokenServices.decode(req.headers.token);
 
@@ -95,8 +94,8 @@ exports.registrar = async (req, res) => {
 // Actualizar un equipo
 exports.actualizar = async (req, res) => {
   const prisma = req.prisma;
-  console.log('body', req.body);
-  console.log('id', req.params.id);
+  // console.log('body', req.body);
+  // console.log('id', req.params.id);
 
   try {
     const validationResponse = await tokenServices.decode(req.headers.token);
@@ -176,9 +175,9 @@ exports.actualizar = async (req, res) => {
 };
 
 exports.actualizarEstado = async (req, res) => {
-  const prisma = req.prisma; // Asumiendo que Prisma Client está inyectado en req
-  console.log('body', req.body);
-  console.log('id', req.params.id);
+  const prisma = req.prisma;
+  // console.log('body', req.body);
+  // console.log('id', req.params.id);
 
   try {
     // 1. Decodificar el token para obtener el responsable (opcional, pero buena práctica si hay historial)
@@ -231,7 +230,7 @@ exports.registrarreporte = async (req, res) => {
   try {
     const validationResponse = await tokenServices.decode(req.headers.token);
     const id = parseInt(req.body.id_equipo);
-    console.log('validationResponse', validationResponse)
+    // console.log('validationResponse', validationResponse)
     const nuevoHistorial = {
       identificacionDeReporte: req.idcreada,
       fechaDeFinalizacion: req.body.reporte.fechadefinalizacion,
@@ -523,8 +522,8 @@ exports.listarTodos = async (req, res) => {
 exports.actualizarcronograma = async (req, res) => {
   const prisma = req.prisma;
   const { id_equipo, fechaDePreventivo } = req.body;
-  console.log('id_equipo', id_equipo);
-  console.log('fechaDePreventivo', fechaDePreventivo);
+  // console.log('id_equipo', id_equipo);
+  // console.log('fechaDePreventivo', fechaDePreventivo);
   try {
     const equipoActualizado = await prisma.equipo.update({
       where: { id: parseInt(id_equipo) },

@@ -246,6 +246,7 @@ exports.actualizar = async (req, res, next) => {
         estado: req.body.estado,
         telefono: req.body.telefono ?? undefined,
       },
+      select: { id: true, nombre: true, email: true, rol: true, estado: true, telefono: true, createdAt: true, updatedAt: true },
     });
 
     res.json(usuario);

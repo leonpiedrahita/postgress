@@ -27,7 +27,20 @@ app.use(cors({
   credentials: true
 }));
 // Headers de seguridad HTTP
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'"],
+      imgSrc: ["'self'", "data:"],
+      connectSrc: ["'self'"],
+      frameSrc: ["'none'"],
+      objectSrc: ["'none'"],
+    },
+  },
+  crossOriginEmbedderPolicy: false, // evita problemas con assets externos en clientes
+}));
 
 // Middleware para parsear JSON y datos URL-encoded
 app.use(morgan("dev"));
@@ -42,6 +55,17 @@ const apiLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
 });
+
+// Rate limiter estricto para autenticación (anti-brute-force)
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 20,
+    message: "Demasiados intentos de autenticación. Intenta de nuevo en 15 minutos.",
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+app.use("/api/usuario/ingresar", authLimiter);
+app.use("/api/usuario/refresh", authLimiter);
 
 // Aplicar Rate Limit solo a las rutas bajo "/api"
 app.use("/api", apiLimiter);

@@ -12,15 +12,40 @@ const s3 = new S3Client({
   },
 });
 
+const MIMETYPES_PERMITIDOS = ['application/pdf', 'image/jpeg', 'image/png'];
+const TAMANO_MAX = 10 * 1024 * 1024; // 10 MB
+
+function validarArchivo(file) {
+  if (!MIMETYPES_PERMITIDOS.includes(file.mimetype))
+    return 'Tipo de archivo no permitido. Solo PDF, JPG o PNG.';
+  if (file.size > TAMANO_MAX)
+    return 'El archivo excede el tamaño máximo de 10 MB.';
+  return null;
+}
+
+function validarFileKey(key) {
+  if (typeof key !== 'string' || !key.trim()) return false;
+  if (key.includes('..') || key.startsWith('/') || key.includes('\0')) return false;
+  return true;
+}
+
 // ✅ Subir archivo a S3
 const guardarreporte = async (req, res, next) => {
   try {
-    const ahora = Date.now();
-    const seriereporte = (JSON.parse(req.body.reporte)).infoequipo.serie;
     if (!req.file) {
       return res.status(400).json({ error: "No se ha recibido ningún archivo." });
     }
+    const errArchivo = validarArchivo(req.file);
+    if (errArchivo) return res.status(400).json({ error: errArchivo });
 
+    let parsed;
+    try { parsed = JSON.parse(req.body.reporte); } catch {
+      return res.status(400).json({ error: 'El campo reporte no es JSON válido.' });
+    }
+    const seriereporte = parsed?.infoequipo?.serie;
+    if (!seriereporte) return res.status(400).json({ error: 'Falta la serie del equipo en el reporte.' });
+
+    const ahora = Date.now();
     const uploadParams = {
       Bucket: process.env.NOMBRE_BUCKET,
       Key: `${seriereporte}-${ahora}-${req.file.originalname}`,
@@ -40,12 +65,23 @@ const guardarreporte = async (req, res, next) => {
 };
 const guardardocumentoequipo = async (req, res, next) => {
   try {
-    const ahora = Date.now();
-    const serieequipo = (JSON.parse(req.body.serie));
-    const nombredocumento = JSON.parse(req.body.nombredocumento) ;
     if (!req.file) {
       return res.status(400).json({ error: "No se ha recibido ningún archivo." });
     }
+    const errArchivo = validarArchivo(req.file);
+    if (errArchivo) return res.status(400).json({ error: errArchivo });
+
+    let serieequipo, nombredocumento;
+    try { serieequipo = JSON.parse(req.body.serie); } catch {
+      return res.status(400).json({ error: 'El campo serie no es válido.' });
+    }
+    try { nombredocumento = JSON.parse(req.body.nombredocumento); } catch {
+      return res.status(400).json({ error: 'El campo nombredocumento no es válido.' });
+    }
+    if (!serieequipo || !nombredocumento)
+      return res.status(400).json({ error: 'Faltan campos requeridos: serie o nombredocumento.' });
+
+    const ahora = Date.now();
 
     const uploadParams = {
       Bucket: process.env.NOMBRE_BUCKET,
@@ -68,12 +104,23 @@ const guardardocumentoequipo = async (req, res, next) => {
 
 const guardarsoporteservicio = async (req, res, next) => {
   try {
-    const ahora = Date.now();
-    const serieequipo = (JSON.parse(req.body.serie));
-    const nombredocumento = JSON.parse(req.body.nombredocumento) ;
     if (!req.file) {
       return res.status(400).json({ error: "No se ha recibido ningún archivo." });
     }
+    const errArchivo = validarArchivo(req.file);
+    if (errArchivo) return res.status(400).json({ error: errArchivo });
+
+    let serieequipo, nombredocumento;
+    try { serieequipo = JSON.parse(req.body.serie); } catch {
+      return res.status(400).json({ error: 'El campo serie no es válido.' });
+    }
+    try { nombredocumento = JSON.parse(req.body.nombredocumento); } catch {
+      return res.status(400).json({ error: 'El campo nombredocumento no es válido.' });
+    }
+    if (!serieequipo || !nombredocumento)
+      return res.status(400).json({ error: 'Faltan campos requeridos: serie o nombredocumento.' });
+
+    const ahora = Date.now();
 
     const uploadParams = {
       Bucket: process.env.NOMBRE_BUCKET,
@@ -101,6 +148,9 @@ const buscar = async (req, res) => {
     if (!fileKey) {
       return res.status(400).json({ error: "No se proporcionó la clave del archivo (fileKey)." });
     }
+    if (!validarFileKey(fileKey)) {
+      return res.status(400).json({ error: "Clave de archivo inválida." });
+    }
 
     const downloadParams = {
       Bucket: process.env.NOMBRE_BUCKET,
@@ -110,7 +160,7 @@ const buscar = async (req, res) => {
     const { Body } = await s3.send(new GetObjectCommand(downloadParams));
 
     const downloadsDir = path.join(__dirname, "downloads");
-    const filePath = path.join(downloadsDir, fileKey);
+    const filePath = path.join(downloadsDir, path.basename(fileKey));
 
     // Asegurar que la carpeta "downloads" existe
     if (!fs.existsSync(downloadsDir)) {
@@ -140,6 +190,9 @@ const buscarurl = async (req, res) => {
     const { fileKey } = req.body;
     if (!fileKey) {
       return res.status(400).json({ error: "No se proporcionó la clave del archivo (fileKey)." });
+    }
+    if (!validarFileKey(fileKey)) {
+      return res.status(400).json({ error: "Clave de archivo inválida." });
     }
 
     const url = await getSignedUrl(

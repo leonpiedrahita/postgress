@@ -3,7 +3,9 @@ const { getPrismaWithUser } = require('../../src/prisma-client'); // importa la 
 
 const verificarRol = (rolesPermitidos) => {
   return async (req, res, next) => {
-    const token = req.headers.token;
+    const token = req.headers.authorization?.startsWith('Bearer ')
+      ? req.headers.authorization.slice(7)
+      : req.headers.token;
 
     if (!token) {
       return res.status(404).send({ message: 'Token no encontrado' });
