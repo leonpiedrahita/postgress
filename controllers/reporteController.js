@@ -6,7 +6,7 @@ exports.listar = async (req, res) => {
     const reportes = await prisma.reporte.findMany();
     res.status(200).json(reportes);
   } catch (err) {
-    console.log(err);
+    console.error(err);
     res.status(500).json({
       error: err.message,
     });
@@ -28,7 +28,7 @@ exports.listaruno = async (req, res) => {
       res.json("nada");
     }
   } catch (err) {
-    console.log(err);
+    console.error(err);
     res.status(500).json({
       error: err.message,
     });
@@ -77,12 +77,12 @@ exports.registrar = async (req, res,next) => {
       data: nuevoReporte,
     });
 
-    console.log(result);
+    // console.log(result);
     req.respuesta='Reporte creado'
     req.idcreada = result.id
     next()
   } catch (err) {
-    console.log(err);
+    console.error(err);
     res.status(500).json({
       error: err.message,
     });
@@ -112,7 +112,7 @@ exports.registrarexterno = async (req, res, next) => {
       data: nuevoReporte,
     });
 
-    console.log('Resultado registrar reporte externo', result);
+    // console.log('Resultado registrar reporte externo', result);
 
     // Guardar datos en res.locals para el siguiente middleware
     res.locals.respuesta = 'Reporte externo creado';
@@ -120,7 +120,7 @@ exports.registrarexterno = async (req, res, next) => {
 
     next(); // Continuar con el siguiente middleware
   } catch (err) {
-    console.log(err);
+    console.error(err);
     res.status(500).json({ error: err.message });
   }
 };
@@ -141,7 +141,7 @@ exports.actualizar = async (req, res) => {
       articulo: result,
     });
   } catch (err) {
-    console.log(err);
+    console.error(err);
     res.status(500).json({
       error: err.message,
     });

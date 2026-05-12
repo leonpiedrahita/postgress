@@ -118,9 +118,6 @@ exports.actualizar = async (req, res) => {
 };
 exports.registrardocumento = async (req, res) => {
   const prisma = req.prisma; // Obtener el cliente Prisma del request
-  console.log('req.body', req.body);
-  console.log('req.file', req.file);    
-  console.log('res.locals.llave', res.locals.llave);
   try {
     const id = parseInt(req.body.id_equipo);
     const nombredocumento = JSON.parse(req.body.nombredocumento);
