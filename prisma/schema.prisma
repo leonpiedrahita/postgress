@@ -286,7 +286,7 @@ model Reporte {
 model ConfiguracionNotificacion {
   id               Int     @id @default(autoincrement())
   rol              String
-  tipoNotificacion String  @map("tipo_notificacion") // "ingreso" | "etapa"
+  tipoNotificacion String  // "ingreso" | "etapa"
   habilitado       Boolean @default(true)
 
   @@unique([rol, tipoNotificacion])
