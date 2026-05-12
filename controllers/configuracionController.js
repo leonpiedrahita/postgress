@@ -4,11 +4,10 @@ const prisma = getPrismaWithUser('sistema');
 
 exports.obtenerConfiguracion = async (req, res) => {
   try {
-    const filas = await prisma.$queryRaw`
-      SELECT rol, "tipoNotificacion", habilitado
-      FROM configuracion_notificaciones
-      ORDER BY rol, "tipoNotificacion"
-    `;
+    const filas = await prisma.configuracionNotificacion.findMany({
+      select: { rol: true, tipoNotificacion: true, habilitado: true },
+      orderBy: [{ rol: 'asc' }, { tipoNotificacion: 'asc' }],
+    });
     res.status(200).json(filas);
   } catch (err) {
     console.error('Error al obtener configuración de notificaciones:', err);
@@ -24,11 +23,11 @@ exports.guardarConfiguracionBulk = async (req, res) => {
   try {
     await prisma.$transaction(
       cambios.map(({ rol, tipoNotificacion, habilitado }) =>
-        prisma.$executeRaw`
-          INSERT INTO configuracion_notificaciones (rol, "tipoNotificacion", habilitado)
-          VALUES (${rol}, ${tipoNotificacion}, ${habilitado})
-          ON CONFLICT (rol, "tipoNotificacion") DO UPDATE SET habilitado = ${habilitado}
-        `
+        prisma.configuracionNotificacion.upsert({
+          where: { rol_tipoNotificacion: { rol, tipoNotificacion } },
+          update: { habilitado },
+          create: { rol, tipoNotificacion, habilitado },
+        })
       )
     );
     res.status(200).json({ message: 'Configuración guardada', total: cambios.length });
@@ -40,20 +39,49 @@ exports.guardarConfiguracionBulk = async (req, res) => {
 
 exports.actualizarConfiguracion = async (req, res) => {
   const { rol, tipoNotificacion, habilitado } = req.body;
-
   if (!rol || !tipoNotificacion || typeof habilitado !== 'boolean') {
     return res.status(400).json({ error: 'Campos requeridos: rol, tipoNotificacion, habilitado (boolean)' });
   }
-
   try {
-    await prisma.$executeRaw`
-      INSERT INTO configuracion_notificaciones (rol, "tipoNotificacion", habilitado)
-      VALUES (${rol}, ${tipoNotificacion}, ${habilitado})
-      ON CONFLICT (rol, "tipoNotificacion") DO UPDATE SET habilitado = ${habilitado}
-    `;
+    await prisma.configuracionNotificacion.upsert({
+      where: { rol_tipoNotificacion: { rol, tipoNotificacion } },
+      update: { habilitado },
+      create: { rol, tipoNotificacion, habilitado },
+    });
     res.status(200).json({ message: 'Configuración actualizada' });
   } catch (err) {
     console.error('Error al actualizar configuración de notificaciones:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.obtenerGlobal = async (req, res) => {
+  try {
+    const registro = await prisma.configuracionNotificacion.findUnique({
+      where: { rol_tipoNotificacion: { rol: 'sistema', tipoNotificacion: 'global' } },
+      select: { habilitado: true },
+    });
+    res.status(200).json({ habilitado: registro ? registro.habilitado : true });
+  } catch (err) {
+    console.error('Error al obtener toggle global:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.actualizarGlobal = async (req, res) => {
+  const { habilitado } = req.body;
+  if (typeof habilitado !== 'boolean') {
+    return res.status(400).json({ error: 'El campo habilitado debe ser boolean' });
+  }
+  try {
+    await prisma.configuracionNotificacion.upsert({
+      where: { rol_tipoNotificacion: { rol: 'sistema', tipoNotificacion: 'global' } },
+      update: { habilitado },
+      create: { rol: 'sistema', tipoNotificacion: 'global', habilitado },
+    });
+    res.status(200).json({ message: 'Toggle global actualizado', habilitado });
+  } catch (err) {
+    console.error('Error al actualizar toggle global:', err);
     res.status(500).json({ error: err.message });
   }
 };

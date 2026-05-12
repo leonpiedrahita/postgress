@@ -26,10 +26,16 @@ const ETAPA_A_TIPO = {
 };
 
 async function getRolesHabilitados(tipo) {
-  const filas = await prisma.$queryRaw`
-    SELECT rol FROM configuracion_notificaciones
-    WHERE "tipoNotificacion" = ${tipo} AND habilitado = true
-  `;
+  const global = await prisma.configuracionNotificacion.findUnique({
+    where: { rol_tipoNotificacion: { rol: 'sistema', tipoNotificacion: 'global' } },
+    select: { habilitado: true },
+  });
+  if (global && !global.habilitado) return [];
+
+  const filas = await prisma.configuracionNotificacion.findMany({
+    where: { tipoNotificacion: tipo, habilitado: true },
+    select: { rol: true },
+  });
   const roles = filas.map(f => f.rol);
   if (!roles.includes('administrador')) roles.push('administrador');
   return roles;
