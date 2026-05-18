@@ -243,20 +243,52 @@ async function notificarCambioEtapa(ingresoId, datosEtapa) {
       return;
     }
 
-    const usuarios = await prisma.usuario.findMany({
-      where: { rol: { in: roles }, estado: 1, telefono: { not: null } },
-      select: { telefono: true },
-    });
+    const equipo = ingreso.equipo;
+    const cliente = equipo.cliente;
+    const ciudad = cliente?.sedePrincipal?.ciudad || 'Sin ciudad';
+    const estadoEquipo = datosEtapa.estadoEquipo || equipo.estado || 'Sin estado';
+
+    const ESTADOS_DISPONIBLE = ['Disponible', 'Disponible Pdte. MP.'];
+
+    let usuarios;
+    if (roles.includes('comercial')) {
+      const otrosRoles = roles.filter(r => r !== 'comercial');
+      const [usuariosOtros, usuariosComercial] = await Promise.all([
+        otrosRoles.length
+          ? prisma.usuario.findMany({
+              where: { rol: { in: otrosRoles }, estado: 1, telefono: { not: null } },
+              select: { telefono: true },
+            })
+          : Promise.resolve([]),
+        ESTADOS_DISPONIBLE.includes(estadoEquipo)
+          ? prisma.usuario.findMany({
+              where: { rol: 'comercial', estado: 1, telefono: { not: null } },
+              select: { telefono: true },
+            })
+          : equipo.asesor
+            ? prisma.usuario.findMany({
+                where: { rol: 'comercial', estado: 1, telefono: { not: null }, nombre: equipo.asesor },
+                select: { telefono: true },
+              })
+            : Promise.resolve([]),
+      ]);
+      const vistos = new Set();
+      usuarios = [...usuariosOtros, ...usuariosComercial].filter(u => {
+        if (vistos.has(u.telefono)) return false;
+        vistos.add(u.telefono);
+        return true;
+      });
+    } else {
+      usuarios = await prisma.usuario.findMany({
+        where: { rol: { in: roles }, estado: 1, telefono: { not: null } },
+        select: { telefono: true },
+      });
+    }
 
     if (!usuarios.length) {
       console.warn('[WhatsApp] No hay usuarios con teléfono registrado para notificar cambio de etapa.');
       return;
     }
-
-    const equipo = ingreso.equipo;
-    const cliente = equipo.cliente;
-    const ciudad = cliente?.sedePrincipal?.ciudad || 'Sin ciudad';
-    const estadoEquipo = datosEtapa.estadoEquipo || equipo.estado || 'Sin estado';
 
     const componentes = [
       {
