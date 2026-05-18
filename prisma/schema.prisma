@@ -128,6 +128,8 @@ model Equipo {
   ubicacionNombre       String // Nombre de la ubicación
   ubicacionDireccion    String // Dirección de la ubicación
   estado                String // Estado del equipo
+  atencion              String? // Atención: Autorizado, Cartera o MP
+  asesor                String? // Nombre del asesor comercial (importado desde CSV)
   historialPropietarios HistorialPropietario[] // Relación con HistorialPropietario
   historialEstados      HistorialEstadoEquipo[] // Relación con historial de estados
   fechaDeInstalacion    String? // Fecha de instalación (puede ser opcional)

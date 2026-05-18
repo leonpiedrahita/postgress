@@ -1,15 +1,16 @@
 jest.mock('axios');
-jest.mock('@prisma/client', () => ({
-  PrismaClient: jest.fn().mockImplementation(() => mockPrismaInstance),
+jest.mock('../src/prisma-client', () => ({
+  getPrismaWithUser: jest.fn(() => mockPrismaInstance),
+  prisma: {},
 }));
 
 const axios = require('axios');
 
-// El mock de Prisma debe existir antes de requerir el servicio
 const mockPrismaInstance = {
   ingreso: { findUnique: jest.fn() },
   equipo: { findUnique: jest.fn() },
   usuario: { findMany: jest.fn() },
+  $queryRaw: jest.fn(),
 };
 
 const {
@@ -94,6 +95,11 @@ describe('enviarMensajeTexto', () => {
 // ─── notificarIngresoEquipo ───────────────────────────────────────────────────
 
 describe('notificarIngresoEquipo', () => {
+  beforeEach(() => {
+    mockPrismaInstance.$queryRaw.mockResolvedValue([
+      { rol: 'soporte' }, { rol: 'lumira' }, { rol: 'aplicaciones' }, { rol: 'comercial' },
+    ]);
+  });
   const ingresoMock = {
     id: 1,
     createdAt: new Date('2024-01-15'),
@@ -132,8 +138,11 @@ describe('notificarIngresoEquipo', () => {
     await notificarIngresoEquipo(1);
 
     const callArg = mockPrismaInstance.usuario.findMany.mock.calls[0][0];
-    expect(callArg.where.rol.notIn).toEqual(expect.arrayContaining(['ventas', 'ingresos', 'calidad']));
-    expect(callArg.where.rol.notIn).not.toContain('lumira');
+    expect(callArg.where.rol.in).toBeDefined();
+    expect(callArg.where.rol.in).not.toContain('ventas');
+    expect(callArg.where.rol.in).not.toContain('ingresos');
+    expect(callArg.where.rol.in).not.toContain('calidad');
+    expect(callArg.where.rol.in).toContain('lumira');
   });
 
   it('no envía nada si el ingreso no existe', async () => {
@@ -166,6 +175,13 @@ describe('notificarIngresoEquipo', () => {
 // ─── notificarCambioEtapa ─────────────────────────────────────────────────────
 
 describe('notificarCambioEtapa', () => {
+  beforeEach(() => {
+    // Por defecto: roles sin bodega, con lumira
+    mockPrismaInstance.$queryRaw.mockResolvedValue([
+      { rol: 'soporte' }, { rol: 'lumira' }, { rol: 'aplicaciones' },
+    ]);
+  });
+
   const ingresoConEquipo = {
     id: 10,
     equipo: {
@@ -183,7 +199,7 @@ describe('notificarCambioEtapa', () => {
 
   const datosEtapa = {
     etapaFinalizada: 'Recepción',
-    etapaNueva: 'Diagnóstico',
+    etapaNueva: 'Soporte ingeniería',
     ubicacion: 'Taller electrónica',
     comentario: 'Revisión de PCB',
     responsable: 'Pedro Técnico',
@@ -204,7 +220,7 @@ describe('notificarCambioEtapa', () => {
     expect(params[1].text).toBe('Desfibrilador - DF-007'); // {{2}} equipo-serie
     expect(params[2].text).toBe('En soporte');           // {{3}} estado equipo
     expect(params[3].text).toBe('Recepción');            // {{4}} etapa finalizada
-    expect(params[4].text).toBe('Diagnóstico');          // {{5}} etapa iniciada
+    expect(params[4].text).toBe('Soporte ingeniería');    // {{5}} etapa iniciada
     expect(params[5].text).toBe('Taller electrónica');   // {{6}} ubicación
     expect(params[6].text).toBe('Revisión de PCB');      // {{7}} observaciones
     expect(params[7].text).toBe('Pedro Técnico');        // {{8}} responsable
@@ -226,6 +242,7 @@ describe('notificarCambioEtapa', () => {
   });
 
   it('incluye bodega cuando etapaNueva es Listo para despacho', async () => {
+    mockPrismaInstance.$queryRaw.mockResolvedValue([{ rol: 'bodega' }, { rol: 'soporte' }, { rol: 'lumira' }]);
     mockPrismaInstance.ingreso.findUnique.mockResolvedValue(ingresoConEquipo);
     mockPrismaInstance.usuario.findMany.mockResolvedValue(usuariosMock);
     axios.post.mockResolvedValue({ data: {} });
@@ -242,6 +259,7 @@ describe('notificarCambioEtapa', () => {
   });
 
   it('incluye bodega cuando etapaNueva es Despachado', async () => {
+    mockPrismaInstance.$queryRaw.mockResolvedValue([{ rol: 'bodega' }, { rol: 'soporte' }, { rol: 'lumira' }]);
     mockPrismaInstance.ingreso.findUnique.mockResolvedValue(ingresoConEquipo);
     mockPrismaInstance.usuario.findMany.mockResolvedValue(usuariosMock);
     axios.post.mockResolvedValue({ data: {} });

@@ -1,10 +1,6 @@
-const { getPrismaWithUser } = require('../src/prisma-client');
-
-const prisma = getPrismaWithUser('sistema');
-
 exports.obtenerConfiguracion = async (req, res) => {
   try {
-    const filas = await prisma.configuracionNotificacion.findMany({
+    const filas = await req.prisma.configuracionNotificacion.findMany({
       select: { rol: true, tipoNotificacion: true, habilitado: true },
       orderBy: [{ rol: 'asc' }, { tipoNotificacion: 'asc' }],
     });
@@ -21,9 +17,9 @@ exports.guardarConfiguracionBulk = async (req, res) => {
     return res.status(400).json({ error: 'Se requiere un array de cambios' });
   }
   try {
-    await prisma.$transaction(
+    await req.prisma.$transaction(
       cambios.map(({ rol, tipoNotificacion, habilitado }) =>
-        prisma.configuracionNotificacion.upsert({
+        req.prisma.configuracionNotificacion.upsert({
           where: { rol_tipoNotificacion: { rol, tipoNotificacion } },
           update: { habilitado },
           create: { rol, tipoNotificacion, habilitado },
@@ -43,7 +39,7 @@ exports.actualizarConfiguracion = async (req, res) => {
     return res.status(400).json({ error: 'Campos requeridos: rol, tipoNotificacion, habilitado (boolean)' });
   }
   try {
-    await prisma.configuracionNotificacion.upsert({
+    await req.prisma.configuracionNotificacion.upsert({
       where: { rol_tipoNotificacion: { rol, tipoNotificacion } },
       update: { habilitado },
       create: { rol, tipoNotificacion, habilitado },
@@ -57,7 +53,7 @@ exports.actualizarConfiguracion = async (req, res) => {
 
 exports.obtenerGlobal = async (req, res) => {
   try {
-    const registro = await prisma.configuracionNotificacion.findUnique({
+    const registro = await req.prisma.configuracionNotificacion.findUnique({
       where: { rol_tipoNotificacion: { rol: 'sistema', tipoNotificacion: 'global' } },
       select: { habilitado: true },
     });
@@ -74,7 +70,7 @@ exports.actualizarGlobal = async (req, res) => {
     return res.status(400).json({ error: 'El campo habilitado debe ser boolean' });
   }
   try {
-    await prisma.configuracionNotificacion.upsert({
+    await req.prisma.configuracionNotificacion.upsert({
       where: { rol_tipoNotificacion: { rol: 'sistema', tipoNotificacion: 'global' } },
       update: { habilitado },
       create: { rol: 'sistema', tipoNotificacion: 'global', habilitado },

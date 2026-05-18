@@ -553,6 +553,182 @@ exports.listarAuditLog = async (req, res) => {
   }
 };
 
+exports.actualizarAtencion = async (req, res) => {
+  const prisma = req.prisma;
+  try {
+    const id = parseInt(req.params.id);
+    const { atencion } = req.body;
+
+    const VALORES_VALIDOS = ['Autorizado', 'Cartera', 'MP', 'Cartera - MP', null, ''];
+    if (!VALORES_VALIDOS.includes(atencion)) {
+      return res.status(400).json({ error: "Valor de atención inválido" });
+    }
+
+    const updatedEquipo = await prisma.equipo.update({
+      where: { id },
+      data: { atencion: atencion || null },
+      select: { id: true, nombre: true, serie: true, atencion: true },
+    });
+
+    res.status(200).json({ message: "Atención actualizada", equipo: updatedEquipo });
+  } catch (err) {
+    if (err.code === 'P2025') {
+      return res.status(404).json({ error: `Equipo con ID ${req.params.id} no encontrado.` });
+    }
+    console.error("Error al actualizar atención:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+const NIT_BIOSYSTEMS = '811003513'; // RUT de Biosystems — proveedor propio
+
+exports.importarAtencion = async (req, res) => {
+  const prisma = req.prisma;
+  // registros: [{ nit: string, dias: number }]
+  const { registros } = req.body;
+
+  if (!Array.isArray(registros) || registros.length === 0) {
+    return res.status(400).json({ error: 'Se requiere un array de registros' });
+  }
+
+  // Construir mapa NIT → dias (normalizando a string sin espacios)
+  const mapaCartera = new Map();
+  for (const r of registros) {
+    mapaCartera.set(String(r.nit).trim(), Number(r.dias));
+  }
+
+  try {
+    // Obtener todos los equipos activos con sus relaciones necesarias
+    const equipos = await prisma.equipo.findMany({
+      where: { estado: { not: 'Inactivo' } },
+      select: {
+        id: true,
+        fechaDePreventivo: true,
+        cliente: { select: { nit: true } },
+        proveedor: { select: { nit: true, nombre: true } },
+        referencia: { select: { periodicidadmantenimiento: true } },
+      },
+    });
+
+    const hoy = new Date();
+
+    // Calcular si el preventivo está vencido
+    function preventivoVencido(equipo) {
+      const periodicidad = equipo.referencia?.periodicidadmantenimiento;
+      if (!equipo.fechaDePreventivo || periodicidad === 'Libre de mantenimiento') return false;
+      const fecha = new Date(equipo.fechaDePreventivo);
+      const limite = new Date(fecha);
+      if (periodicidad === 'Anual')      limite.setMonth(limite.getMonth() + 12);
+      else if (periodicidad === 'Semestral') limite.setMonth(limite.getMonth() + 6);
+      else if (periodicidad === 'Trimestral') limite.setMonth(limite.getMonth() + 3);
+      else return false;
+      return hoy > limite;
+    }
+
+    let actualizados = 0;
+    let enBlanco = 0;
+
+    const actualizaciones = equipos.map((equipo) => {
+      const nitProveedor = String(equipo.proveedor?.nit || '').trim();
+      const esBiosystems = nitProveedor === NIT_BIOSYSTEMS;
+      const nitBuscar = esBiosystems
+        ? String(equipo.cliente?.nit || '').trim()
+        : nitProveedor;
+
+      const dias = mapaCartera.has(nitBuscar) ? mapaCartera.get(nitBuscar) : null;
+
+      const vencido = preventivoVencido(equipo);
+      let atencion = null;
+      if (dias !== null) {
+        const cartera = dias >= 90;
+        if (cartera && vencido)  atencion = 'Cartera - MP';
+        else if (cartera)        atencion = 'Cartera';
+        else if (vencido)        atencion = 'MP';
+        else                     atencion = 'Autorizado';
+        actualizados++;
+      } else {
+        atencion = vencido ? 'MP' : 'Autorizado';
+        enBlanco++;
+      }
+
+      return prisma.equipo.update({
+        where: { id: equipo.id },
+        data: { atencion },
+      });
+    });
+
+    await prisma.$transaction(actualizaciones);
+
+    res.status(200).json({
+      message: 'Importación completada',
+      actualizados,
+      enBlanco,
+      total: equipos.length,
+    });
+  } catch (err) {
+    console.error('Error al importar atención:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.importarAsesor = async (req, res) => {
+  const prisma = req.prisma;
+  // registros: [{ nit: string, asesor: string }]
+  const { registros } = req.body;
+
+  if (!Array.isArray(registros) || registros.length === 0) {
+    return res.status(400).json({ error: 'Se requiere un array de registros' });
+  }
+
+  // Construir mapa NIT → asesor
+  const mapaAsesor = new Map();
+  for (const r of registros) {
+    mapaAsesor.set(String(r.nit).trim(), String(r.asesor || '').trim());
+  }
+
+  try {
+    const equipos = await prisma.equipo.findMany({
+      where: { estado: { not: 'Inactivo' } },
+      select: {
+        id: true,
+        cliente: { select: { nit: true } },
+        proveedor: { select: { nit: true } },
+      },
+    });
+
+    let actualizados = 0;
+    let enBlanco = 0;
+
+    const actualizaciones = equipos.map((equipo) => {
+      const nitProveedor = String(equipo.proveedor?.nit || '').trim();
+      const esBiosystems = nitProveedor === NIT_BIOSYSTEMS;
+      const nitBuscar = esBiosystems
+        ? String(equipo.cliente?.nit || '').trim()
+        : nitProveedor;
+
+      const asesor = mapaAsesor.has(nitBuscar) ? mapaAsesor.get(nitBuscar) : null;
+      if (asesor) actualizados++; else enBlanco++;
+
+      return prisma.equipo.update({
+        where: { id: equipo.id },
+        data: { asesor },
+      });
+    });
+
+    await prisma.$transaction(actualizaciones);
+
+    res.status(200).json({
+      message: 'Importación de asesores completada',
+      actualizados,
+      enBlanco,
+      total: equipos.length,
+    });
+  } catch (err) {
+    console.error('Error al importar asesores:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
 exports.listarHistorialEstado = async (req, res) => {
   const prisma = req.prisma;
   const equipoId = parseInt(req.params.id);
