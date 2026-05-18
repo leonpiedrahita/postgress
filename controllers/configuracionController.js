@@ -1,3 +1,19 @@
+const { getPrismaWithUser } = require('../src/prisma-client');
+const sistemaPrisma = getPrismaWithUser('sistema');
+
+exports.obtenerNovedades = async (_req, res) => {
+  try {
+    const registro = await sistemaPrisma.configuracionNotificacion.findUnique({
+      where: { rol_tipoNotificacion: { rol: 'sistema', tipoNotificacion: 'mostrar_novedades' } },
+      select: { habilitado: true },
+    });
+    res.status(200).json({ habilitado: registro ? registro.habilitado : false });
+  } catch (err) {
+    console.error('Error al obtener config de novedades:', err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
 exports.obtenerConfiguracion = async (req, res) => {
   try {
     const filas = await req.prisma.configuracionNotificacion.findMany({
