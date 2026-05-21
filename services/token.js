@@ -32,7 +32,8 @@ module.exports = {
         estado: user.estado,
         exp,
       },
-      process.env.JWT_KEY
+      process.env.JWT_KEY,
+      { algorithm: 'HS256' }
     );
 
     return token;
@@ -43,7 +44,7 @@ module.exports = {
    */
   decode: async (token) => {
     try {
-      const decoded = jwt.verify(token, process.env.JWT_KEY);
+      const decoded = jwt.verify(token, process.env.JWT_KEY, { algorithms: ['HS256'] });
 
       const user = await prisma.usuario.findFirst({
         where: {

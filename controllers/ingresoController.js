@@ -275,9 +275,11 @@ exports.registrarIngreso = async (req, res) => {
     // Enviar la respuesta con el ingreso creado
     res.status(201).json(nuevoIngreso);
 
-    // Notificación WhatsApp (no bloqueante — no afecta la respuesta al cliente)
-    const { notificarIngresoEquipo } = require('../services/whatsappService');
-    notificarIngresoEquipo(nuevoIngreso.id).catch(console.error);
+    // Notificación WhatsApp — se omite para equipos recién creados
+    if (etapaSeleccionada !== 'Equipo nuevo') {
+      const { notificarIngresoEquipo } = require('../services/whatsappService');
+      notificarIngresoEquipo(nuevoIngreso.id).catch(console.error);
+    }
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Ocurrió un error al registrar el ingreso.', detalles: err.message });

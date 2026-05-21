@@ -217,6 +217,35 @@ describe('registrarIngreso', () => {
 
     expect(res.status).toHaveBeenCalledWith(400);
   });
+
+  it('llama a notificarIngresoEquipo cuando la etapa no es "Equipo nuevo"', async () => {
+    const { notificarIngresoEquipo } = require('../services/whatsappService');
+    mockPrisma.ingreso.findFirst.mockResolvedValue(null);
+    mockPrisma.equipo.findUnique.mockResolvedValue({ id: 1 });
+    mockPrisma.ingreso.create.mockResolvedValue({ id: 10, etapas: [] });
+
+    const req = mockReq({ body: { equipo: { id: 1 }, etapa: etapaValida } });
+    const res = mockRes();
+    await ingresoController.registrarIngreso(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(notificarIngresoEquipo).toHaveBeenCalledWith(10);
+  });
+
+  it('omite notificarIngresoEquipo cuando etapaSeleccionada es "Equipo nuevo"', async () => {
+    const { notificarIngresoEquipo } = require('../services/whatsappService');
+    mockPrisma.ingreso.findFirst.mockResolvedValue(null);
+    mockPrisma.equipo.findUnique.mockResolvedValue({ id: 1 });
+    mockPrisma.ingreso.create.mockResolvedValue({ id: 10, etapas: [] });
+
+    const etapaEquipoNuevo = { ...etapaValida, etapaSeleccionada: 'Equipo nuevo' };
+    const req = mockReq({ body: { equipo: { id: 1 }, etapa: etapaEquipoNuevo } });
+    const res = mockRes();
+    await ingresoController.registrarIngreso(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(notificarIngresoEquipo).not.toHaveBeenCalled();
+  });
 });
 
 // ─── agregarEtapa ─────────────────────────────────────────────────────────────

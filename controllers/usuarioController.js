@@ -63,7 +63,7 @@ exports.registrar = async (req, res, next) => {
     res.status(201).json({ message: 'Usuario creado', usuario });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err });
+    res.status(500).json({ error: 'Error interno del servidor' });
     next(err);
   }
 };
@@ -252,7 +252,7 @@ exports.actualizar = async (req, res, next) => {
     res.json(usuario);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err });
+    res.status(500).json({ error: 'Error interno del servidor' });
     next(err);
   }
 };

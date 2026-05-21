@@ -11,5 +11,13 @@ BEGIN
 END $$;
 
 -- Ampliar longitud de columnas para soportar valores como 'etapa_cotizacion_solicitada'
-ALTER TABLE configuracion_notificaciones ALTER COLUMN "tipoNotificacion" TYPE VARCHAR(50);
-ALTER TABLE configuracion_notificaciones ALTER COLUMN rol TYPE VARCHAR(100);
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.tables
+    WHERE table_name = 'configuracion_notificaciones'
+  ) THEN
+    ALTER TABLE configuracion_notificaciones ALTER COLUMN "tipoNotificacion" TYPE VARCHAR(50);
+    ALTER TABLE configuracion_notificaciones ALTER COLUMN rol TYPE VARCHAR(100);
+  END IF;
+END $$;
