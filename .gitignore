@@ -1,3 +1,7 @@
 node_modules
 # Keep environment variables out of version control
 .env
+# Reportes de cobertura generados localmente
+coverage/
+# Scripts de diagnóstico y utilidades locales
+scripts/checkDB.js

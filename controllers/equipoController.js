@@ -580,7 +580,7 @@ exports.actualizarAtencion = async (req, res) => {
   }
 };
 
-const NIT_BIOSYSTEMS = '811003513'; // RUT de Biosystems — proveedor propio
+const NIT_BIOSYSTEMS = process.env.NIT_BIOSYSTEMS || '811003513';
 
 exports.importarAtencion = async (req, res) => {
   const prisma = req.prisma;
