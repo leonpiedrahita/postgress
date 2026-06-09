@@ -19,7 +19,7 @@ exports.listarTodosLosIngresos = async (req, res) => {
             },
           },
         },
-        etapas: true,
+        etapas: { orderBy: { id: 'asc' } },
       },
     });
     res.status(200).json(ingresos.length > 0 ? ingresos : []);
@@ -58,7 +58,7 @@ exports.listarIngresosAbiertos = async (req, res) => {
             },
           },
         },
-        etapas: true,
+        etapas: { orderBy: { id: 'asc' } },
       },
     });
 
@@ -84,7 +84,7 @@ exports.listarIngresosPorEstado = async (req, res) => {
       where: { estado },
       include: {
         equipo: true, // Incluye información del equipo relacionado
-        etapas: true, // Incluir las etapas asociadas a cada ingreso
+        etapas: { orderBy: { id: 'asc' } },
       },
     });
     res.status(200).json(ingresos.length > 0 ? ingresos : []);
@@ -109,7 +109,7 @@ exports.listarIngresosPorSerieDeEquipo = async (req, res) => {
       },
       include: {
         equipo: true, // Incluye información del equipo relacionado
-        etapas: true, // Incluir las etapas asociadas a cada ingreso
+        etapas: { orderBy: { id: 'asc' } },
       },
     });
     res.status(200).json(ingresos.length > 0 ? ingresos : []);
@@ -143,7 +143,7 @@ exports.listarIngresosPorNombreDeCliente = async (req, res) => {
             cliente: true, // Incluye información del cliente relacionado
           },
         },
-        etapas: true, // Incluir las etapas asociadas a cada ingreso
+        etapas: { orderBy: { id: 'asc' } },
       },
     });
     res.status(200).json(ingresos.length > 0 ? ingresos : []);
@@ -176,8 +176,7 @@ exports.obtenerIngresoPorId = async (req, res) => {
             cliente: true, // Incluye información del cliente relacionado
           },
         }, // Incluye información del equipo relacionado
-        etapas: true, // Incluir las etapas relacionadas con el ingreso
-
+        etapas: { orderBy: { id: 'asc' } },
       },
     });
 
@@ -268,7 +267,7 @@ exports.registrarIngreso = async (req, res) => {
         },
       },
       include: {
-        etapas: true, // Incluir las etapas creadas en la respuesta
+        etapas: { orderBy: { id: 'asc' } },
       },
     });
 
@@ -317,16 +316,12 @@ exports.agregarEtapa = async (req, res) => {
       });
     }
 
-    // Verificar si el ingreso existe y está en estado "Abierta"
+    // Verificar si el ingreso existe y está en estado "Abierto"
     const ingreso = await prisma.ingreso.findUnique({
       where: { id: parseInt(ingresoId) },
       include: {
-        etapas: {
-          orderBy: {
-            id: 'desc', // <-- Ordenar por ID del más grande al más pequeño
-          },
-          take: 1, // <-- Obtener solo el primer registro (el de mayor ID)
-        },
+        equipo: { select: { id: true, nombre: true, ubicacionNombre: true } },
+        etapas: { orderBy: { id: 'desc' }, take: 1 },
       },
     });
 
@@ -338,56 +333,50 @@ exports.agregarEtapa = async (req, res) => {
       return res.status(400).json({ error: `El ingreso con id ${ingresoId} no está en estado "Abierto".` });
     }
 
-    // Obtener la etapa más reciente
+    // Detectar si la nueva etapa implica cambio de ubicación física
     const etapaMasReciente = ingreso.etapas[0];
+    const ubicacionAnterior = etapaMasReciente?.ubicacion ?? null;
+    const cambiaUbicacion = ubicacionAnterior !== null && ubicacionAnterior !== ubicacion;
+    const ubicLower = (ubicacion || '').toLowerCase();
+    const sinConfirmacion = !cambiaUbicacion || ubicLower.includes('cliente') || ubicLower.includes('dado de baja');
+    const confirmadoNuevaEtapa = sinConfirmacion;
+
     if (etapaMasReciente) {
-      // Actualizar la etapa más reciente con los valores de fecha, responsable y comentario
       await prisma.etapa.update({
         where: { id: etapaMasReciente.id },
-        data: {
-          fecha,
-          responsable,
-          comentario,
-        },
+        data: { fecha, responsable, comentario },
       });
     }
 
-    // Agregar la nueva etapa al ingreso con los valores de nombre y ubicación
+    // Crear la nueva etapa — confirmado=false si hay cambio de ubicación
     const nuevaEtapa = await prisma.etapa.create({
       data: {
-        ingresoId: parseInt(ingresoId), // Relacionar con el ingreso
+        ingresoId: parseInt(ingresoId),
         nombre,
-        comentario: null, // La nueva etapa no incluye el comentario (puedes modificar esto según sea necesario)
-        responsable: null, // La nueva etapa no incluye el responsable (puedes modificar esto según sea necesario)
-        fecha: null, // La nueva etapa no incluye la fecha (puedes modificar esto según sea necesario)
+        comentario: null,
+        responsable: null,
+        fecha: null,
         ubicacion,
+        confirmado: confirmadoNuevaEtapa,
       },
     });
 
     // Actualizar los campos etapaActual, ultimaEtapa y estado del ingreso
     const ingresoActualizado = await prisma.ingreso.update({
       where: { id: parseInt(ingresoId) },
-      data: {
-        etapaActual,
-        ultimaEtapa,
-        estado,
-      },
+      data: { etapaActual, ultimaEtapa, estado },
     });
 
-    // Responder con la nueva etapa, la etapa actualizada y el ingreso actualizado
     res.status(201).json({
       message: 'Etapa agregada y etapa más reciente actualizada exitosamente.',
-      etapaMasRecienteActualizada: {
-        id: etapaMasReciente?.id,
-        fecha,
-        responsable,
-        comentario,
-      },
+      cambiaUbicacion,
+      confirmado: confirmadoNuevaEtapa,
+      etapaMasRecienteActualizada: { id: etapaMasReciente?.id, fecha, responsable, comentario },
       nuevaEtapa,
       ingresoActualizado,
     });
 
-    // Notificación WhatsApp (no bloqueante)
+    // Notificaciones WhatsApp (no bloqueantes)
     const { notificarCambioEtapa } = require('../services/whatsappService');
     notificarCambioEtapa(parseInt(ingresoId), {
       etapaFinalizada: etapaMasReciente?.nombre || '',
@@ -401,6 +390,115 @@ exports.agregarEtapa = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Ocurrió un error al agregar la etapa.', detalles: err.message });
+  }
+};
+
+/**
+ * Confirmar la llegada física de un equipo a la nueva ubicación.
+ * Solo roles bodega y administrador.
+ */
+exports.confirmarMovimiento = async (req, res) => {
+  const prisma = req.prisma;
+  try {
+    const ingresoId = parseInt(req.params.ingresoId);
+    const etapaId   = parseInt(req.params.etapaId);
+
+    if (isNaN(ingresoId) || isNaN(etapaId)) {
+      return res.status(400).json({ error: 'ingresoId y etapaId deben ser números válidos.' });
+    }
+
+    const etapa = await prisma.etapa.findUnique({
+      where: { id: etapaId },
+      include: { ingreso: { select: { id: true, equipoId: true, estado: true } } },
+    });
+
+    if (!etapa) return res.status(404).json({ error: 'Etapa no encontrada.' });
+    if (etapa.ingresoId !== ingresoId) return res.status(400).json({ error: 'La etapa no pertenece al ingreso indicado.' });
+    if (etapa.confirmado) return res.status(400).json({ error: 'Esta etapa ya fue confirmada.' });
+    if (etapa.ingreso.estado !== 'Abierto') return res.status(400).json({ error: 'El ingreso ya está cerrado.' });
+
+    const rol = req.usuario.rol;
+    const ub = (etapa.ubicacion || '').toLowerCase();
+    const esBodega = ub.includes('bodega');
+    const esIngenieria = ['cuarentena', 'taller de ingenieria', 'taller de ingeniería', 'snibe'].some(t => ub.includes(t));
+    const puedeConfirmar =
+      (esBodega && ['bodega', 'administrador', 'ingresos'].includes(rol)) ||
+      (esIngenieria && ['administrador', 'soporte', 'lumira', 'aplicaciones'].includes(rol));
+    if (!puedeConfirmar) {
+      return res.status(403).json({ error: 'No tienes permiso para confirmar esta ubicación.' });
+    }
+
+    const confirmadoPor = req.usuario.nombre;
+    const fechaConfirmacion = new Date();
+
+    await prisma.$transaction([
+      prisma.etapa.update({
+        where: { id: etapaId },
+        data: { confirmado: true, confirmadoPor, fechaConfirmacion },
+      }),
+      prisma.equipo.update({
+        where: { id: etapa.ingreso.equipoId },
+        data: { ubicacionNombre: etapa.ubicacion },
+      }),
+    ]);
+
+    res.status(200).json({
+      message: 'Movimiento confirmado. Ubicación del equipo actualizada.',
+      etapaId,
+      ubicacionConfirmada: etapa.ubicacion,
+      confirmadoPor,
+      fechaConfirmacion,
+    });
+
+    // Notificación WhatsApp de confirmación (no bloqueante)
+    const { notificarConfirmacionMovimiento } = require('../services/whatsappService');
+    notificarConfirmacionMovimiento(ingresoId, etapaId, { confirmadoPor }).catch(console.error);
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Ocurrió un error al confirmar el movimiento.', detalles: err.message });
+  }
+};
+
+/**
+ * Cuenta etapas pendientes de confirmación en ingresos abiertos.
+ * Usado para el badge en la navegación del frontend.
+ */
+exports.contarMovimientosPendientes = async (req, res) => {
+  const prisma = req.prisma;
+  try {
+    const count = await prisma.etapa.count({
+      where: { confirmado: false, ingreso: { estado: 'Abierto' } },
+    });
+    res.status(200).json({ count });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Ocurrió un error al contar movimientos pendientes.', detalles: err.message });
+  }
+};
+
+/**
+ * Lista etapas pendientes de confirmación con datos del equipo e ingreso.
+ */
+exports.listarMovimientosPendientes = async (req, res) => {
+  const prisma = req.prisma;
+  try {
+    const etapas = await prisma.etapa.findMany({
+      where: { confirmado: false, ingreso: { estado: 'Abierto' } },
+      include: {
+        ingreso: {
+          select: {
+            id: true,
+            equipo: { select: { id: true, nombre: true, serie: true, cliente: { select: { nombre: true } } } },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    res.status(200).json(etapas);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Ocurrió un error al listar movimientos pendientes.', detalles: err.message });
   }
 };
 

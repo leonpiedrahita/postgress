@@ -38,6 +38,9 @@ const verificarRol = (rolesPermitidos) => {
 
 module.exports = {
   verificarAdmin: verificarRol(['administrador']),
+  verificarAdminBod: verificarRol(['administrador', 'bodega']),
+  verificarUbicaciones: verificarRol(['administrador', 'bodega', 'soporte', 'aplicaciones']),
+  verificarConfirmadores: verificarRol(['administrador', 'bodega', 'soporte', 'aplicaciones', 'lumira', 'ingresos']),
   verificarAdminCot: verificarRol(['administrador', 'cotizaciones', 'ventas', 'ingresos']),
   verificarAdminCal: verificarRol(['administrador', 'calidad']),
   verificarAdminSopCom: verificarRol(['administrador', 'soporte', 'aplicaciones', 'comercial']),

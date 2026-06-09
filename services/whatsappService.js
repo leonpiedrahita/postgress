@@ -315,4 +315,88 @@ async function notificarCambioEtapa(ingresoId, datosEtapa) {
   }
 }
 
-module.exports = { enviarPlantilla, enviarMensajeTexto, notificarIngresoEquipo, notificarCambioEtapa };
+/**
+ * Notifica a bodega y administrador que un equipo está en tránsito y requiere confirmación física.
+ * @param {number} ingresoId
+ * @param {number} etapaId
+ * @param {{ equipoNombre: string, ubicacionOrigen: string, ubicacionDestino: string, registradoPor: string }} datos
+ */
+async function notificarMovimientoPendiente(ingresoId, etapaId, datos) {
+  try {
+    const usuarios = await prisma.usuario.findMany({
+      where: { rol: { in: ['bodega', 'administrador'] }, estado: 1, telefono: { not: null } },
+      select: { nombre: true, telefono: true },
+    });
+
+    if (!usuarios.length) {
+      console.warn('[WhatsApp] No hay usuarios bodega/admin para notificar movimiento pendiente.');
+      return;
+    }
+
+    const componentes = [{
+      type: 'body',
+      parameters: [
+        { type: 'text', text: datos.equipoNombre },
+        { type: 'text', text: datos.ubicacionOrigen || 'Ubicación anterior' },
+        { type: 'text', text: datos.ubicacionDestino },
+        { type: 'text', text: datos.registradoPor },
+      ],
+    }];
+
+    for (const u of usuarios) {
+      await enviarPlantilla(u.telefono, 'gomaint_movimiento_pendiente', 'es_CO', componentes);
+    }
+  } catch (err) {
+    console.error('[WhatsApp] Error en notificarMovimientoPendiente:', err.message);
+  }
+}
+
+/**
+ * Notifica a roles operativos que un movimiento fue confirmado físicamente.
+ * @param {number} ingresoId
+ * @param {number} etapaId
+ * @param {{ confirmadoPor: string }} datos
+ */
+async function notificarConfirmacionMovimiento(ingresoId, etapaId, datos) {
+  try {
+    const etapa = await prisma.etapa.findUnique({
+      where: { id: etapaId },
+      include: {
+        ingreso: {
+          include: { equipo: { include: { cliente: true } } },
+        },
+      },
+    });
+
+    if (!etapa) return;
+
+    const rolesHabilitados = await getRolesHabilitados('ingreso');
+    if (!rolesHabilitados.length) return;
+
+    const usuarios = await prisma.usuario.findMany({
+      where: { rol: { in: rolesHabilitados }, estado: 1, telefono: { not: null } },
+      select: { telefono: true },
+    });
+
+    if (!usuarios.length) return;
+
+    const equipo = etapa.ingreso.equipo;
+    const componentes = [{
+      type: 'body',
+      parameters: [
+        { type: 'text', text: equipo.nombre },
+        { type: 'text', text: equipo.serie },
+        { type: 'text', text: etapa.ubicacion },
+        { type: 'text', text: datos.confirmadoPor },
+      ],
+    }];
+
+    for (const u of usuarios) {
+      await enviarPlantilla(u.telefono, 'gomaint_movimiento_confirmado', 'es_CO', componentes);
+    }
+  } catch (err) {
+    console.error('[WhatsApp] Error en notificarConfirmacionMovimiento:', err.message);
+  }
+}
+
+module.exports = { enviarPlantilla, enviarMensajeTexto, notificarIngresoEquipo, notificarCambioEtapa, notificarMovimientoPendiente, notificarConfirmacionMovimiento };

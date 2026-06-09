@@ -20,7 +20,14 @@ router.get('/ingresoid/:ingresoId',auth.verificarUsuarioLum, ingresoController.o
 router.post('/registrar',auth.verificarUsuarioLum, ingresoController.registrarIngreso);
 
 // Ruta para agregar una etapa a un ingreso
-router.post('/agregaretapa/:ingresoId',auth.verificarUsuarioLum, ingresoController.agregarEtapa);
+router.post('/agregaretapa/:ingresoId', auth.verificarUsuarioLum, ingresoController.agregarEtapa);
+
+// Confirmación de movimiento físico de equipo
+router.patch('/confirmar/:ingresoId/etapa/:etapaId', auth.verificarConfirmadores, ingresoController.confirmarMovimiento);
+
+// Movimientos pendientes de confirmación (badge + listado) — visible para todos los roles
+router.get('/movimientos/pendientes/count', auth.verificarUsuarioLum, ingresoController.contarMovimientosPendientes);
+router.get('/movimientos/pendientes', auth.verificarUsuarioLum, ingresoController.listarMovimientosPendientes);
 
 // Ingresos de un equipo específico
 // router.get('/equipo/:equipoId', auth.verificarUsuarioLum, ingresoController.listarPorEquipo);

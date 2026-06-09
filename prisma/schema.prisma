@@ -245,6 +245,9 @@ model Etapa {
   responsable String? // Responsable de esta etapa
   fecha       String? // Fecha de la etapa
   ubicacion   String // Ubicación asociada a la etapa
+  confirmado        Boolean   @default(true) // false = equipo en tránsito, pendiente de confirmación física
+  confirmadoPor     String?   // Nombre del usuario que confirmó la llegada
+  fechaConfirmacion DateTime? // Momento en que se confirmó la llegada
 
   createdAt DateTime @default(now()) // Fecha de creación
 
