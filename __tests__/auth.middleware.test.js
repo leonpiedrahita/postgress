@@ -99,3 +99,70 @@ describe('verificarAdminCalCot', () => {
     expect(res.status).toHaveBeenCalledWith(403);
   });
 });
+
+// ─── verificarUbicaciones ─────────────────────────────────────────────────────
+describe('verificarUbicaciones', () => {
+  const rolesPermitidos = ['administrador', 'bodega', 'soporte', 'aplicaciones'];
+
+  rolesPermitidos.forEach(rol => {
+    it(`permite acceso al rol ${rol}`, async () => {
+      tokenServices.decode.mockResolvedValue({ id: 1, nombre: 'User', rol });
+      const req = mockReq({ headers: { token: 'valid' } });
+      const res = mockRes();
+      await auth.verificarUbicaciones(req, res, mockNext);
+      expect(mockNext).toHaveBeenCalled();
+    });
+  });
+
+  it('deniega acceso a rol lumira', async () => {
+    tokenServices.decode.mockResolvedValue({ id: 1, nombre: 'User', rol: 'lumira' });
+    const res = mockRes();
+    await auth.verificarUbicaciones(mockReq({ headers: { token: 'valid' } }), res, mockNext);
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(mockNext).not.toHaveBeenCalled();
+  });
+
+  it('deniega acceso a rol comercial', async () => {
+    tokenServices.decode.mockResolvedValue({ id: 1, nombre: 'User', rol: 'comercial' });
+    const res = mockRes();
+    await auth.verificarUbicaciones(mockReq({ headers: { token: 'valid' } }), res, mockNext);
+    expect(res.status).toHaveBeenCalledWith(403);
+  });
+});
+
+// ─── verificarConfirmadores ───────────────────────────────────────────────────
+describe('verificarConfirmadores', () => {
+  const rolesPermitidos = ['administrador', 'bodega', 'soporte', 'aplicaciones', 'lumira', 'ingresos'];
+
+  rolesPermitidos.forEach(rol => {
+    it(`permite acceso al rol ${rol}`, async () => {
+      tokenServices.decode.mockResolvedValue({ id: 1, nombre: 'User', rol });
+      const req = mockReq({ headers: { token: 'valid' } });
+      const res = mockRes();
+      await auth.verificarConfirmadores(req, res, mockNext);
+      expect(mockNext).toHaveBeenCalled();
+    });
+  });
+
+  it('deniega acceso a rol comercial', async () => {
+    tokenServices.decode.mockResolvedValue({ id: 1, nombre: 'User', rol: 'comercial' });
+    const res = mockRes();
+    await auth.verificarConfirmadores(mockReq({ headers: { token: 'valid' } }), res, mockNext);
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(mockNext).not.toHaveBeenCalled();
+  });
+
+  it('deniega acceso a rol calidad', async () => {
+    tokenServices.decode.mockResolvedValue({ id: 1, nombre: 'User', rol: 'calidad' });
+    const res = mockRes();
+    await auth.verificarConfirmadores(mockReq({ headers: { token: 'valid' } }), res, mockNext);
+    expect(res.status).toHaveBeenCalledWith(403);
+  });
+
+  it('deniega acceso a rol cotizaciones', async () => {
+    tokenServices.decode.mockResolvedValue({ id: 1, nombre: 'User', rol: 'cotizaciones' });
+    const res = mockRes();
+    await auth.verificarConfirmadores(mockReq({ headers: { token: 'valid' } }), res, mockNext);
+    expect(res.status).toHaveBeenCalledWith(403);
+  });
+});
