@@ -497,6 +497,7 @@ exports.listarTodos = async (req, res) => {
     const equipos = await prisma.equipo.findMany({
       where: { estado: { not: 'Inactivo' } },
       select: {
+        id: true,
         nombre: true,
         marca: true,
         serie: true,
@@ -505,9 +506,9 @@ exports.listarTodos = async (req, res) => {
         estado: true,
         tipoDeContrato: true,
         fechaDePreventivo: true,
-        propietario: { select: { nombre: true } },
-        cliente: { select: { nombre: true } },
-        proveedor: { select: { nombre: true } },
+        propietario: { select: { nombre: true, sedePrincipal: { select: { ciudad: true } } } },
+        cliente:     { select: { nombre: true, sedePrincipal: { select: { ciudad: true } } } },
+        proveedor:   { select: { nombre: true, sedePrincipal: { select: { ciudad: true } } } },
         referencia: { select: { periodicidadmantenimiento: true } },
       },
       orderBy: { id: 'desc' },
