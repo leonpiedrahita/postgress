@@ -17,8 +17,9 @@ const mockPrisma = {
   ingreso: { findFirst: jest.fn() },
   historialPropietario: { create: jest.fn() },
   historialServicio: { create: jest.fn() },
-  documentoLegal: { create: jest.fn() },
-  historialEstadoEquipo: { create: jest.fn() },
+  documentoLegal: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+  historialEstadoEquipo: { create: jest.fn(), findMany: jest.fn() },
+  auditLog: { findMany: jest.fn() },
   $transaction: jest.fn(),
   $queryRaw: jest.fn(),
 };
@@ -480,5 +481,439 @@ describe('listarTodos', () => {
     const res = mockRes();
     await equipoController.listarTodos(mockReq(), res);
     expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+// ─── eliminarDocumentoLegal ───────────────────────────────────────────────────
+describe('eliminarDocumentoLegal', () => {
+  it('retorna 400 si el id no es un número válido', async () => {
+    const res = mockRes();
+    await equipoController.eliminarDocumentoLegal(mockReq({ params: { id: 'abc' } }), res);
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it('retorna 404 si el documento no existe', async () => {
+    mockPrisma.documentoLegal.findUnique.mockResolvedValue(null);
+    const res = mockRes();
+    await equipoController.eliminarDocumentoLegal(mockReq({ params: { id: '99' } }), res);
+    expect(res.status).toHaveBeenCalledWith(404);
+  });
+
+  it('marca el documento como eliminado y retorna 200', async () => {
+    mockPrisma.documentoLegal.findUnique.mockResolvedValue({ id: 1, eliminado: false });
+    mockPrisma.documentoLegal.update.mockResolvedValue({ id: 1, eliminado: true });
+
+    const res = mockRes();
+    await equipoController.eliminarDocumentoLegal(mockReq({ params: { id: '1' } }), res);
+
+    expect(mockPrisma.documentoLegal.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 1 }, data: { eliminado: true } })
+    );
+    expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  it('retorna 500 si Prisma lanza error', async () => {
+    mockPrisma.documentoLegal.findUnique.mockRejectedValue(new Error('DB error'));
+    const res = mockRes();
+    await equipoController.eliminarDocumentoLegal(mockReq({ params: { id: '1' } }), res);
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+// ─── listarAuditLog ───────────────────────────────────────────────────────────
+describe('listarAuditLog', () => {
+  it('retorna 400 si el id no es un número válido', async () => {
+    const res = mockRes();
+    await equipoController.listarAuditLog(mockReq({ params: { id: 'abc' } }), res);
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it('retorna 200 con los logs de auditoría', async () => {
+    const logs = [{ id: 1, action: 'UPDATE', tableName: 'Equipo', recordId: 5 }];
+    mockPrisma.auditLog.findMany.mockResolvedValue(logs);
+
+    const res = mockRes();
+    await equipoController.listarAuditLog(mockReq({ params: { id: '5' } }), res);
+
+    expect(mockPrisma.auditLog.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { tableName: 'Equipo', recordId: 5 } })
+    );
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(logs);
+  });
+
+  it('retorna 500 si Prisma lanza error', async () => {
+    mockPrisma.auditLog.findMany.mockRejectedValue(new Error('DB error'));
+    const res = mockRes();
+    await equipoController.listarAuditLog(mockReq({ params: { id: '1' } }), res);
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+// ─── actualizarAtencion ───────────────────────────────────────────────────────
+describe('actualizarAtencion', () => {
+  it('retorna 400 si el valor de atencion es inválido', async () => {
+    const req = mockReq({ params: { id: '1' }, body: { atencion: 'ValorInvalido' } });
+    const res = mockRes();
+    await equipoController.actualizarAtencion(req, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it('actualiza la atención y retorna 200', async () => {
+    const equipo = { id: 1, nombre: 'Motor', serie: 'S-01', atencion: 'Autorizado' };
+    mockPrisma.equipo.update.mockResolvedValue(equipo);
+
+    const req = mockReq({ params: { id: '1' }, body: { atencion: 'Autorizado' } });
+    const res = mockRes();
+    await equipoController.actualizarAtencion(req, res);
+
+    expect(mockPrisma.equipo.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 1 }, data: { atencion: 'Autorizado' } })
+    );
+    expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  it('acepta atencion null y limpia el campo', async () => {
+    mockPrisma.equipo.update.mockResolvedValue({ id: 1, atencion: null });
+    const req = mockReq({ params: { id: '1' }, body: { atencion: null } });
+    const res = mockRes();
+    await equipoController.actualizarAtencion(req, res);
+    expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  it('retorna 404 si Prisma lanza error P2025', async () => {
+    const err = new Error('Record not found');
+    err.code = 'P2025';
+    mockPrisma.equipo.update.mockRejectedValue(err);
+
+    const req = mockReq({ params: { id: '999' }, body: { atencion: 'MP' } });
+    const res = mockRes();
+    await equipoController.actualizarAtencion(req, res);
+    expect(res.status).toHaveBeenCalledWith(404);
+  });
+
+  it('retorna 500 si Prisma lanza error genérico', async () => {
+    mockPrisma.equipo.update.mockRejectedValue(new Error('DB error'));
+    const req = mockReq({ params: { id: '1' }, body: { atencion: 'MP' } });
+    const res = mockRes();
+    await equipoController.actualizarAtencion(req, res);
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+// ─── listarHistorialEstado ────────────────────────────────────────────────────
+describe('listarHistorialEstado', () => {
+  it('retorna 400 si el id no es un número válido', async () => {
+    const res = mockRes();
+    await equipoController.listarHistorialEstado(mockReq({ params: { id: 'xyz' } }), res);
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it('retorna 200 con el historial de estados', async () => {
+    const historial = [{ id: 1, equipoId: 3, estado: 'Inactivo', fecha: new Date() }];
+    mockPrisma.historialEstadoEquipo.findMany.mockResolvedValue(historial);
+
+    const res = mockRes();
+    await equipoController.listarHistorialEstado(mockReq({ params: { id: '3' } }), res);
+
+    expect(mockPrisma.historialEstadoEquipo.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { equipoId: 3 } })
+    );
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(historial);
+  });
+
+  it('retorna 500 si Prisma lanza error', async () => {
+    mockPrisma.historialEstadoEquipo.findMany.mockRejectedValue(new Error('DB error'));
+    const res = mockRes();
+    await equipoController.listarHistorialEstado(mockReq({ params: { id: '3' } }), res);
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+// ─── listarPreventivos ────────────────────────────────────────────────────────
+describe('listarPreventivos', () => {
+  it('retorna 200 con los equipos con preventivo pendiente', async () => {
+    const equipos = [{ id: 1, nombre: 'Monitor', fechaDePreventivo: new Date('2025-03-01') }];
+    mockPrisma.equipo.findMany.mockResolvedValue(equipos);
+
+    const res = mockRes();
+    await equipoController.listarPreventivos(mockReq(), res);
+
+    expect(mockPrisma.equipo.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ fechaDePreventivo: { not: null } }),
+      })
+    );
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(equipos);
+  });
+
+  it('retorna 500 si Prisma lanza error', async () => {
+    mockPrisma.equipo.findMany.mockRejectedValue(new Error('DB error'));
+    const res = mockRes();
+    await equipoController.listarPreventivos(mockReq(), res);
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+// ─── importarAtencion ─────────────────────────────────────────────────────────
+describe('importarAtencion', () => {
+  it('retorna 400 si registros no es un array', async () => {
+    const req = mockReq({ body: { registros: 'no-array' } });
+    const res = mockRes();
+    await equipoController.importarAtencion(req, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it('retorna 400 si registros es un array vacío', async () => {
+    const req = mockReq({ body: { registros: [] } });
+    const res = mockRes();
+    await equipoController.importarAtencion(req, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it('clasifica Cartera-MP cuando dias>=90 y preventivo vencido', async () => {
+    // fechaDePreventivo en 2020 + Anual → vencido
+    const equipos = [{
+      id: 1,
+      fechaDePreventivo: new Date('2020-01-01'),
+      cliente: { nit: '900111222' },
+      proveedor: { nit: '900111222', nombre: 'Proveedor X' },
+      referencia: { periodicidadmantenimiento: 'Anual' },
+    }];
+    mockPrisma.equipo.findMany.mockResolvedValue(equipos);
+    mockPrisma.equipo.update.mockResolvedValue({});
+    mockPrisma.$transaction.mockResolvedValue([{}]);
+
+    const req = mockReq({ body: { registros: [{ nit: '900111222', dias: 100 }] } });
+    const res = mockRes();
+    await equipoController.importarAtencion(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    const body = res.json.mock.calls[0][0];
+    expect(body.actualizados).toBe(1);
+    expect(body.enBlanco).toBe(0);
+    // update debe haber sido llamado con 'Cartera - MP'
+    expect(mockPrisma.equipo.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { atencion: 'Cartera - MP' } })
+    );
+  });
+
+  it('clasifica Cartera cuando dias>=90 y preventivo no vencido', async () => {
+    const futuro = new Date();
+    futuro.setFullYear(futuro.getFullYear() + 1); // preventivo válido por 1 año más
+    const equipos = [{
+      id: 2,
+      fechaDePreventivo: futuro,
+      cliente: { nit: '123' },
+      proveedor: { nit: '123', nombre: 'X' },
+      referencia: { periodicidadmantenimiento: 'Anual' },
+    }];
+    mockPrisma.equipo.findMany.mockResolvedValue(equipos);
+    mockPrisma.equipo.update.mockResolvedValue({});
+    mockPrisma.$transaction.mockResolvedValue([{}]);
+
+    const req = mockReq({ body: { registros: [{ nit: '123', dias: 95 }] } });
+    const res = mockRes();
+    await equipoController.importarAtencion(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(mockPrisma.equipo.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { atencion: 'Cartera' } })
+    );
+  });
+
+  it('clasifica MP cuando dias<90 y preventivo vencido', async () => {
+    const equipos = [{
+      id: 3,
+      fechaDePreventivo: new Date('2020-01-01'),
+      cliente: { nit: '456' },
+      proveedor: { nit: '456', nombre: 'X' },
+      referencia: { periodicidadmantenimiento: 'Semestral' },
+    }];
+    mockPrisma.equipo.findMany.mockResolvedValue(equipos);
+    mockPrisma.equipo.update.mockResolvedValue({});
+    mockPrisma.$transaction.mockResolvedValue([{}]);
+
+    const req = mockReq({ body: { registros: [{ nit: '456', dias: 30 }] } });
+    const res = mockRes();
+    await equipoController.importarAtencion(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(mockPrisma.equipo.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { atencion: 'MP' } })
+    );
+  });
+
+  it('clasifica Autorizado cuando nit no está en cartera y preventivo no vencido', async () => {
+    const futuro = new Date();
+    futuro.setFullYear(futuro.getFullYear() + 1);
+    const equipos = [{
+      id: 4,
+      fechaDePreventivo: futuro,
+      cliente: { nit: '789' },
+      proveedor: { nit: '789', nombre: 'X' },
+      referencia: { periodicidadmantenimiento: 'Anual' },
+    }];
+    mockPrisma.equipo.findMany.mockResolvedValue(equipos);
+    mockPrisma.equipo.update.mockResolvedValue({});
+    mockPrisma.$transaction.mockResolvedValue([{}]);
+
+    // registros con NIT diferente → equipo queda en enBlanco
+    const req = mockReq({ body: { registros: [{ nit: '000', dias: 0 }] } });
+    const res = mockRes();
+    await equipoController.importarAtencion(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    const body = res.json.mock.calls[0][0];
+    expect(body.enBlanco).toBe(1);
+    expect(mockPrisma.equipo.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { atencion: 'Autorizado' } })
+    );
+  });
+
+  it('usa nit del cliente cuando el proveedor es Biosystems', async () => {
+    const equipos = [{
+      id: 5,
+      fechaDePreventivo: null,
+      cliente: { nit: 'CLI-001' },
+      proveedor: { nit: '811003513', nombre: 'Biosystems' }, // NIT_BIOSYSTEMS
+      referencia: { periodicidadmantenimiento: 'Libre de mantenimiento' },
+    }];
+    mockPrisma.equipo.findMany.mockResolvedValue(equipos);
+    mockPrisma.equipo.update.mockResolvedValue({});
+    mockPrisma.$transaction.mockResolvedValue([{}]);
+
+    const req = mockReq({ body: { registros: [{ nit: 'CLI-001', dias: 0 }] } });
+    const res = mockRes();
+    await equipoController.importarAtencion(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(mockPrisma.equipo.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { atencion: 'Autorizado' } })
+    );
+  });
+
+  it('retorna 500 si Prisma lanza error', async () => {
+    mockPrisma.equipo.findMany.mockRejectedValue(new Error('DB error'));
+    const req = mockReq({ body: { registros: [{ nit: '123', dias: 0 }] } });
+    const res = mockRes();
+    await equipoController.importarAtencion(req, res);
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+// ─── importarAsesor ───────────────────────────────────────────────────────────
+describe('importarAsesor', () => {
+  it('retorna 400 si registros no es un array', async () => {
+    const req = mockReq({ body: { registros: null } });
+    const res = mockRes();
+    await equipoController.importarAsesor(req, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it('retorna 400 si registros es un array vacío', async () => {
+    const req = mockReq({ body: { registros: [] } });
+    const res = mockRes();
+    await equipoController.importarAsesor(req, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it('asigna asesor por NIT y retorna 200 con conteos correctos', async () => {
+    const equipos = [
+      { id: 1, cliente: { nit: 'CLI-A' }, proveedor: { nit: 'PROV-A' } },
+      { id: 2, cliente: { nit: 'CLI-B' }, proveedor: { nit: 'PROV-B' } }, // sin asesor
+    ];
+    mockPrisma.equipo.findMany.mockResolvedValue(equipos);
+    mockPrisma.equipo.update.mockResolvedValue({});
+    mockPrisma.$transaction.mockResolvedValue([{}, {}]);
+
+    const req = mockReq({ body: { registros: [{ nit: 'PROV-A', asesor: 'Juan Pérez' }] } });
+    const res = mockRes();
+    await equipoController.importarAsesor(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    const body = res.json.mock.calls[0][0];
+    expect(body.actualizados).toBe(1);
+    expect(body.enBlanco).toBe(1);
+    expect(body.total).toBe(2);
+  });
+
+  it('usa nit del cliente cuando el proveedor es Biosystems', async () => {
+    const equipos = [{
+      id: 3,
+      cliente: { nit: 'CLI-X' },
+      proveedor: { nit: '811003513' }, // NIT_BIOSYSTEMS
+    }];
+    mockPrisma.equipo.findMany.mockResolvedValue(equipos);
+    mockPrisma.equipo.update.mockResolvedValue({});
+    mockPrisma.$transaction.mockResolvedValue([{}]);
+
+    const req = mockReq({ body: { registros: [{ nit: 'CLI-X', asesor: 'María López' }] } });
+    const res = mockRes();
+    await equipoController.importarAsesor(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(mockPrisma.equipo.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { asesor: 'María López' } })
+    );
+  });
+
+  it('retorna 500 si Prisma lanza error', async () => {
+    mockPrisma.equipo.findMany.mockRejectedValue(new Error('DB error'));
+    const req = mockReq({ body: { registros: [{ nit: '123', asesor: 'Test' }] } });
+    const res = mockRes();
+    await equipoController.importarAsesor(req, res);
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+// ─── importarAtencion — ramas residuales de preventivoVencido ─────────────────
+describe('importarAtencion — preventivoVencido ramas Trimestral y desconocida', () => {
+  it('clasifica MP cuando periodicidad es Trimestral y el preventivo está vencido', async () => {
+    const equipos = [{
+      id: 10,
+      fechaDePreventivo: new Date('2020-01-01'), // claramente vencido
+      cliente: { nit: 'T-001' },
+      proveedor: { nit: 'T-001', nombre: 'X' },
+      referencia: { periodicidadmantenimiento: 'Trimestral' },
+    }];
+    mockPrisma.equipo.findMany.mockResolvedValue(equipos);
+    mockPrisma.equipo.update.mockResolvedValue({});
+    mockPrisma.$transaction.mockResolvedValue([{}]);
+
+    const req = mockReq({ body: { registros: [{ nit: 'T-001', dias: 10 }] } });
+    const res = mockRes();
+    await equipoController.importarAtencion(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(mockPrisma.equipo.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { atencion: 'MP' } })
+    );
+  });
+
+  it('clasifica Autorizado cuando periodicidad es desconocida (else return false)', async () => {
+    const futuro = new Date();
+    futuro.setFullYear(futuro.getFullYear() + 1);
+    const equipos = [{
+      id: 11,
+      fechaDePreventivo: futuro,
+      cliente: { nit: 'D-001' },
+      proveedor: { nit: 'D-001', nombre: 'X' },
+      referencia: { periodicidadmantenimiento: 'Bienal' }, // periodicidad no reconocida → else return false
+    }];
+    mockPrisma.equipo.findMany.mockResolvedValue(equipos);
+    mockPrisma.equipo.update.mockResolvedValue({});
+    mockPrisma.$transaction.mockResolvedValue([{}]);
+
+    const req = mockReq({ body: { registros: [{ nit: 'D-001', dias: 10 }] } });
+    const res = mockRes();
+    await equipoController.importarAtencion(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(mockPrisma.equipo.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { atencion: 'Autorizado' } })
+    );
   });
 });

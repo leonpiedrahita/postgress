@@ -46,7 +46,7 @@ exports.registrar = async (req, res,next) => {
         },
       },
     });
-    const duracion = req.body.reporte.duracion.toString()
+    const duracion = req.body.reporte.duracion != null ? String(req.body.reporte.duracion) : ''
 
     const nuevoReporte = {
       numero: contador + 1,

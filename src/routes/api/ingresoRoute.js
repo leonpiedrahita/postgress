@@ -2,6 +2,8 @@ const router = require('express').Router()
 const ingresoController = require('../../../controllers/ingresoController')
 const auth = require('../../middleware/auth');
 const attachPrisma = require('../../middleware/attachPrisma');
+const validate = require('../../middleware/validate');
+const { registrarIngresoSchema, agregarEtapaSchema } = require('../../schemas/ingreso.schema');
 
 
 // Ruta pública (no requiere token ni cliente Prisma)
@@ -17,10 +19,10 @@ router.get('/cliente/:nombreCliente',auth.verificarUsuarioLum, ingresoController
 router.get('/ingresoid/:ingresoId',auth.verificarUsuarioLum, ingresoController.obtenerIngresoPorId);
 
 // Ruta para registrar un nuevo ingreso
-router.post('/registrar',auth.verificarUsuarioLum, ingresoController.registrarIngreso);
+router.post('/registrar',auth.verificarUsuarioLum, validate(registrarIngresoSchema), ingresoController.registrarIngreso);
 
 // Ruta para agregar una etapa a un ingreso
-router.post('/agregaretapa/:ingresoId', auth.verificarUsuarioLum, ingresoController.agregarEtapa);
+router.post('/agregaretapa/:ingresoId', auth.verificarUsuarioLum, validate(agregarEtapaSchema), ingresoController.agregarEtapa);
 
 // Confirmación de movimiento físico de equipo
 router.patch('/confirmar/:ingresoId/etapa/:etapaId', auth.verificarConfirmadores, ingresoController.confirmarMovimiento);

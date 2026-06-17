@@ -2,6 +2,8 @@ const router = require('express').Router()
 const refequipoController = require('../../../controllers/refequipoController')
 const auth = require('../../middleware/auth');
 const attachPrisma = require('../../middleware/attachPrisma');
+const validate = require('../../middleware/validate');
+const { registrarSchema, actualizarSchema } = require('../../schemas/refequipo.schema');
 
 //Hasta este punto ya vamos en api/refequipo ya comenzamos a
 // manejar los metodos
@@ -15,9 +17,9 @@ router.use(attachPrisma);
 router.get("/listar",auth.verificarUsuario,refequipoController.listar);
 
 //.com/api/refequipo/registrar
-router.post("/registrar",auth.verificarAdminCal,refequipoController.registrar);
+router.post("/registrar",auth.verificarAdminCal, validate(registrarSchema), refequipoController.registrar);
 
-router.patch("/actualizar/:id",auth.verificarAdminCalCot,refequipoController.actualizar);
+router.patch("/actualizar/:id",auth.verificarAdminCalCot, validate(actualizarSchema), refequipoController.actualizar);
 
 router.get("/listaruno/:id",auth.verificarUsuario,refequipoController.listaruno);
 

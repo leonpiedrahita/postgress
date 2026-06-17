@@ -215,9 +215,9 @@ exports.registrarIngreso = async (req, res) => {
 
     // Validar los campos obligatorios de etapa
     const { etapaSeleccionada, ubicacionEtapaSeleccionada, comentario, nombre, responsable, fecha, ubicacion } = etapa;
-    if (!(etapaSeleccionada && ubicacionEtapaSeleccionada && comentario && nombre && responsable && fecha && ubicacion)) {
+    if (!etapaSeleccionada || !ubicacionEtapaSeleccionada || !nombre || !fecha || !ubicacion) {
       return res.status(400).json({
-        error: 'Campoz del formulario enviado faltantes',
+        error: 'Campos del formulario enviado faltantes',
       });
     }
 

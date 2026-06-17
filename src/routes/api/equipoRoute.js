@@ -2,6 +2,14 @@ const router = require('express').Router()
 const equipoController = require('../../../controllers/equipoController')
 const auth = require('../../middleware/auth');
 const attachPrisma = require('../../middleware/attachPrisma');
+const validate = require('../../middleware/validate');
+const {
+  registrarSchema,
+  actualizarSchema,
+  actualizarEstadoSchema,
+  buscarEquiposSchema,
+  actualizarCronogramaSchema,
+} = require('../../schemas/equipo.schema');
 
 //Hasta este punto ya vamos en api/usuario ya comenzamos a
 // manejar los metodos
@@ -14,16 +22,16 @@ router.use(attachPrisma);
 router.get("/listar",auth.verificarUsuarioLum,equipoController.listar );
 
 //.com/api/usuario/register
-router.post("/registrar",auth.verificarAdminCalCot,equipoController.registrar);
+router.post("/registrar",auth.verificarAdminCalCot, validate(registrarSchema), equipoController.registrar);
 
 //.com/api/usuario/actualizar/id del elemento de la colección que quiero modificar
-router.patch("/actualizar/:id",auth.verificarAdminCalCot,equipoController.actualizar);
-router.patch("/actualizarestado/:id",auth.verificarAdminSopCotBodLum,equipoController.actualizarEstado);
+router.patch("/actualizar/:id",auth.verificarAdminCalCot, validate(actualizarSchema), equipoController.actualizar);
+router.patch("/actualizarestado/:id",auth.verificarAdminSopCotBodLum, validate(actualizarEstadoSchema), equipoController.actualizarEstado);
 router.get("/buscar",auth.verificarUsuarioLum,equipoController.buscar);
 router.get("/listaruno/:id",auth.verificarUsuarioLum,equipoController.listaruno);
-router.post("/buscarequipos",auth.verificarUsuarioLum,equipoController.buscarequipos);
+router.post("/buscarequipos",auth.verificarUsuarioLum, validate(buscarEquiposSchema), equipoController.buscarequipos);
 router.get("/listartodos",auth.verificarUsuarioLum,equipoController.listarTodos);
-router.patch("/actualizarcronograma",auth.verificarUsuario,equipoController.actualizarcronograma)
+router.patch("/actualizarcronograma",auth.verificarUsuario, validate(actualizarCronogramaSchema), equipoController.actualizarcronograma)
 router.get("/preventivos",auth.verificarUsuarioLum,equipoController.listarPreventivos)
 router.get("/auditlog/:id",auth.verificarAdmin,equipoController.listarAuditLog)
 router.get("/historialestado/:id",auth.verificarUsuarioLum,equipoController.listarHistorialEstado)

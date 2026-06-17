@@ -1,4 +1,4 @@
-jest.mock('bcryptjs');
+﻿jest.mock('bcryptjs');
 jest.mock('../services/token');
 jest.mock('../src/prisma-client', () => {
   const mockUsuario = {
@@ -97,20 +97,28 @@ describe('ingresar', () => {
 
 // ─── refresh ──────────────────────────────────────────────────────────────────
 describe('refresh', () => {
-  it('retorna 200 con nuevo accessToken si el refresh token es válido', async () => {
+  it('retorna 200 con nuevo accessToken y nuevo refreshToken (rotación)', async () => {
     const usuario = { id: 1, nombre: 'Leo', rol: 'administrador', email: 'leo@test.com', estado: 1 };
-    tokenServices.hashRefreshToken = jest.fn().mockReturnValue('sha256-hash');
+    tokenServices.hashRefreshToken = jest.fn()
+      .mockReturnValueOnce('hash-viejo')   // primer llamado: hash del token entrante
+      .mockReturnValueOnce('hash-nuevo');   // segundo llamado: hash del token rotado
+    tokenServices.generateRefreshToken = jest.fn().mockReturnValue('nuevo-uuid');
     mockPrismaBase.usuario.findFirst.mockResolvedValue(usuario);
+    mockPrismaBase.usuario.update.mockResolvedValue(usuario);
     tokenServices.encode.mockReturnValue('nuevo-jwt');
 
     const res = mockRes();
-    await usuarioController.refresh(mockReq({ body: { refreshToken: 'raw-uuid' } }), res);
+    await usuarioController.refresh(mockReq({ body: { refreshToken: 'viejo-uuid' } }), res);
 
     expect(mockPrismaBase.usuario.findFirst).toHaveBeenCalledWith(
-      expect.objectContaining({ where: expect.objectContaining({ refreshToken: 'sha256-hash' }) })
+      expect.objectContaining({ where: expect.objectContaining({ refreshToken: 'hash-viejo', refreshTokenCount: { lt: 2 } }) })
+    );
+    // El hash nuevo se almacena en BD (token anterior queda inválido)
+    expect(mockPrismaBase.usuario.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ refreshToken: 'hash-nuevo' }) })
     );
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith({ accessToken: 'nuevo-jwt' });
+    expect(res.json).toHaveBeenCalledWith({ accessToken: 'nuevo-jwt', refreshToken: 'nuevo-uuid' });
   });
 
   it('retorna 401 si no se envía refreshToken', async () => {
@@ -127,6 +135,17 @@ describe('refresh', () => {
     const res = mockRes();
     await usuarioController.refresh(mockReq({ body: { refreshToken: 'token-invalido' } }), res);
     expect(res.status).toHaveBeenCalledWith(401);
+  });
+
+  it('retorna 401 si el refreshTokenCount ya alcanzó el límite (token reutilizado ≥ 2 veces)', async () => {
+    tokenServices.hashRefreshToken = jest.fn().mockReturnValue('sha256-hash');
+    // findFirst devuelve null porque la query incluye refreshTokenCount: { lt: 2 } y no hay match
+    mockPrismaBase.usuario.findFirst.mockResolvedValue(null);
+
+    const res = mockRes();
+    await usuarioController.refresh(mockReq({ body: { refreshToken: 'token-agotado' } }), res);
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(mockPrismaBase.usuario.update).not.toHaveBeenCalled();
   });
 });
 
@@ -432,59 +451,77 @@ describe('buscarfirma', () => {
 
 // ─── cambiarContrasena ────────────────────────────────────────────────────────
 describe('cambiarContrasena', () => {
-  const passwordValida = 'Nueva@123';
+  const oldPassword = 'Actual@123';
+  const newPassword = 'Nueva@456';
 
-  it('cambia la contraseña y retorna 200', async () => {
-    mockPrismaInternal.usuario.findUnique.mockResolvedValue({ id: 3 });
+  it('cambia la contraseña y retorna 200 cuando oldPassword es correcto', async () => {
+    mockPrismaInternal.usuario.findUnique.mockResolvedValue({ id: 3, password: 'hash-actual' });
+    bcrypt.compare.mockResolvedValue(true);
     bcrypt.hash.mockResolvedValue('new-hash');
     mockPrismaInternal.usuario.update.mockResolvedValue({ id: 3 });
 
     const res = mockRes();
     await usuarioController.cambiarContrasena(
-      mockReq({ body: { newPassword: passwordValida }, usuario: { id: 3 } }),
+      mockReq({ body: { oldPassword, newPassword }, usuario: { id: 3 } }),
       res
     );
+
+    expect(bcrypt.compare).toHaveBeenCalledWith(oldPassword, 'hash-actual');
+    expect(bcrypt.hash).toHaveBeenCalledWith(newPassword, 10);
     expect(res.status).toHaveBeenCalledWith(200);
   });
 
-  it('retorna 400 si la contraseña no cumple complejidad', async () => {
-    const res = mockRes();
-    await usuarioController.cambiarContrasena(
-      mockReq({ body: { newPassword: 'simple' }, usuario: { id: 3 } }),
-      res
-    );
-    expect(res.status).toHaveBeenCalledWith(400);
-  });
+  it('retorna 401 si oldPassword es incorrecto', async () => {
+    mockPrismaInternal.usuario.findUnique.mockResolvedValue({ id: 3, password: 'hash-actual' });
+    bcrypt.compare.mockResolvedValue(false);
 
-  it('retorna 400 si no se envía contraseña', async () => {
     const res = mockRes();
     await usuarioController.cambiarContrasena(
-      mockReq({ body: {}, usuario: { id: 3 } }),
+      mockReq({ body: { oldPassword: 'Incorrecta@1', newPassword }, usuario: { id: 3 } }),
       res
     );
-    expect(res.status).toHaveBeenCalledWith(400);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(mockPrismaInternal.usuario.update).not.toHaveBeenCalled();
   });
 
   it('retorna 404 si el usuario no existe', async () => {
     mockPrismaInternal.usuario.findUnique.mockResolvedValue(null);
+
     const res = mockRes();
     await usuarioController.cambiarContrasena(
-      mockReq({ body: { newPassword: passwordValida }, usuario: { id: 999 } }),
+      mockReq({ body: { oldPassword, newPassword }, usuario: { id: 999 } }),
       res
     );
+
     expect(res.status).toHaveBeenCalledWith(404);
+    expect(bcrypt.compare).not.toHaveBeenCalled();
   });
 
-  it('retorna 500 si Prisma lanza error', async () => {
-    mockPrismaInternal.usuario.findUnique.mockResolvedValue({ id: 3 });
+  it('retorna 500 si Prisma lanza error en findUnique', async () => {
+    mockPrismaInternal.usuario.findUnique.mockRejectedValue(new Error('DB error'));
+
+    const res = mockRes();
+    await usuarioController.cambiarContrasena(
+      mockReq({ body: { oldPassword, newPassword }, usuario: { id: 3 } }),
+      res
+    );
+
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+
+  it('retorna 500 si Prisma lanza error en update', async () => {
+    mockPrismaInternal.usuario.findUnique.mockResolvedValue({ id: 3, password: 'hash-actual' });
+    bcrypt.compare.mockResolvedValue(true);
     bcrypt.hash.mockResolvedValue('new-hash');
     mockPrismaInternal.usuario.update.mockRejectedValue(new Error('DB error'));
 
     const res = mockRes();
     await usuarioController.cambiarContrasena(
-      mockReq({ body: { newPassword: passwordValida }, usuario: { id: 3 } }),
+      mockReq({ body: { oldPassword, newPassword }, usuario: { id: 3 } }),
       res
     );
+
     expect(res.status).toHaveBeenCalledWith(500);
   });
 });
@@ -686,40 +723,38 @@ describe('buscarfirma', () => {
 
 // ─── cambiarContrasena ────────────────────────────────────────────────────────
 describe('cambiarContrasena', () => {
-  const passwordValida = 'Nueva@123';
+  const oldPassword = 'Actual@123';
+  const newPassword = 'Nueva@456';
 
-  it('cambia la contraseña y retorna 200', async () => {
-    const bcrypt = require('bcryptjs');
-    mockPrismaInternal.usuario.findUnique.mockResolvedValue({ id: 3 });
+  it('cambia la contraseña y retorna 200 cuando oldPassword es correcto', async () => {
+    mockPrismaInternal.usuario.findUnique.mockResolvedValue({ id: 3, password: 'hash-actual' });
+    bcrypt.compare.mockResolvedValue(true);
     bcrypt.hash.mockResolvedValue('new-hash');
     mockPrismaInternal.usuario.update.mockResolvedValue({ id: 3 });
 
     const res = mockRes();
     await usuarioController.cambiarContrasena(
-      mockReq({ body: { newPassword: passwordValida }, usuario: { id: 3 } }),
+      mockReq({ body: { oldPassword, newPassword }, usuario: { id: 3 } }),
       res
     );
 
-    expect(bcrypt.hash).toHaveBeenCalledWith(passwordValida, 10);
+    expect(bcrypt.compare).toHaveBeenCalledWith(oldPassword, 'hash-actual');
+    expect(bcrypt.hash).toHaveBeenCalledWith(newPassword, 10);
     expect(res.status).toHaveBeenCalledWith(200);
   });
 
-  it('retorna 400 si la contraseña no cumple la complejidad mínima', async () => {
-    const res = mockRes();
-    await usuarioController.cambiarContrasena(
-      mockReq({ body: { newPassword: 'sincomplejidad' }, usuario: { id: 3 } }),
-      res
-    );
-    expect(res.status).toHaveBeenCalledWith(400);
-  });
+  it('retorna 401 si oldPassword es incorrecto', async () => {
+    mockPrismaInternal.usuario.findUnique.mockResolvedValue({ id: 3, password: 'hash-actual' });
+    bcrypt.compare.mockResolvedValue(false);
 
-  it('retorna 400 si no se envía contraseña', async () => {
     const res = mockRes();
     await usuarioController.cambiarContrasena(
-      mockReq({ body: {}, usuario: { id: 3 } }),
+      mockReq({ body: { oldPassword: 'Incorrecta@1', newPassword }, usuario: { id: 3 } }),
       res
     );
-    expect(res.status).toHaveBeenCalledWith(400);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(mockPrismaInternal.usuario.update).not.toHaveBeenCalled();
   });
 
   it('retorna 404 si el usuario no existe', async () => {
@@ -727,23 +762,38 @@ describe('cambiarContrasena', () => {
 
     const res = mockRes();
     await usuarioController.cambiarContrasena(
-      mockReq({ body: { newPassword: passwordValida }, usuario: { id: 999 } }),
+      mockReq({ body: { oldPassword, newPassword }, usuario: { id: 999 } }),
       res
     );
+
     expect(res.status).toHaveBeenCalledWith(404);
+    expect(bcrypt.compare).not.toHaveBeenCalled();
   });
 
-  it('retorna 500 si Prisma lanza error al actualizar', async () => {
-    const bcrypt = require('bcryptjs');
-    mockPrismaInternal.usuario.findUnique.mockResolvedValue({ id: 3 });
+  it('retorna 500 si Prisma lanza error en findUnique', async () => {
+    mockPrismaInternal.usuario.findUnique.mockRejectedValue(new Error('DB error'));
+
+    const res = mockRes();
+    await usuarioController.cambiarContrasena(
+      mockReq({ body: { oldPassword, newPassword }, usuario: { id: 3 } }),
+      res
+    );
+
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+
+  it('retorna 500 si Prisma lanza error en update', async () => {
+    mockPrismaInternal.usuario.findUnique.mockResolvedValue({ id: 3, password: 'hash-actual' });
+    bcrypt.compare.mockResolvedValue(true);
     bcrypt.hash.mockResolvedValue('new-hash');
     mockPrismaInternal.usuario.update.mockRejectedValue(new Error('DB error'));
 
     const res = mockRes();
     await usuarioController.cambiarContrasena(
-      mockReq({ body: { newPassword: passwordValida }, usuario: { id: 3 } }),
+      mockReq({ body: { oldPassword, newPassword }, usuario: { id: 3 } }),
       res
     );
+
     expect(res.status).toHaveBeenCalledWith(500);
   });
 });

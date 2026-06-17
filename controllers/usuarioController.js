@@ -173,12 +173,13 @@ exports.refresh = async (req, res) => {
   try {
     const tokenHash = tokenServices.hashRefreshToken(refreshToken);
 
-    // Búsqueda directa por hash — O(1), sin iterar todos los usuarios
+    // Búsqueda directa por hash — O(1); rechaza tokens expirados o agotados
     const usuarioValido = await prismaPublico.usuario.findFirst({
       where: {
         estado: 1,
         refreshToken: tokenHash,
         refreshTokenExp: { gt: new Date() },
+        refreshTokenCount: { lt: 2 },
       },
     });
 
@@ -186,19 +187,21 @@ exports.refresh = async (req, res) => {
       return res.status(401).json({ message: 'Refresh token inválido, expirado o límite de renovaciones alcanzado' });
     }
 
-    // Emite nuevo access token, renueva la ventana 2h e incrementa el contador
+    // Rotación: genera un nuevo refresh token e invalida el anterior al sobrescribir el hash
     const accessToken = tokenServices.encode(usuarioValido);
-    const nuevaExp = new Date(Date.now() + 4 * 60 * 60 * 1000); // 4 horas desde el último refresh
+    const newRefreshToken = tokenServices.generateRefreshToken();
+    const nuevaExp = new Date(Date.now() + 4 * 60 * 60 * 1000);
 
     await prismaPublico.usuario.update({
       where: { id: usuarioValido.id },
       data: {
+        refreshToken: tokenServices.hashRefreshToken(newRefreshToken),
         refreshTokenExp: nuevaExp,
         refreshTokenCount: { increment: 1 },
       },
     });
 
-    res.status(200).json({ accessToken });
+    res.status(200).json({ accessToken, refreshToken: newRefreshToken });
   } catch (err) {
     console.error('Error en refresh:', err);
     res.status(500).json({ error: err.message });
@@ -313,17 +316,15 @@ exports.buscarfirma = async (req, res) => {
 
 exports.cambiarContrasena = async (req, res) => {
   const prisma = req.prisma;
-  const { newPassword } = req.body;
+  const { oldPassword, newPassword } = req.body;
   const id = req.usuario.id;
-
-  const regexContrasena = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).{6,}$/;
-  if (!newPassword || !regexContrasena.test(newPassword)) {
-    return res.status(400).json({ message: 'La contraseña debe contener al menos una mayúscula, una minúscula, un número y un carácter especial.' });
-  }
 
   try {
     const usuario = await prisma.usuario.findUnique({ where: { id } });
     if (!usuario) return res.status(404).json({ message: 'Usuario no encontrado' });
+
+    const passwordValida = await bcrypt.compare(oldPassword, usuario.password);
+    if (!passwordValida) return res.status(401).json({ message: 'La contraseña actual es incorrecta.' });
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     await prisma.usuario.update({

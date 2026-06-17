@@ -12,17 +12,6 @@ const s3 = new S3Client({
   },
 });
 
-const MIMETYPES_PERMITIDOS = ['application/pdf', 'image/jpeg', 'image/png'];
-const TAMANO_MAX = 10 * 1024 * 1024; // 10 MB
-
-function validarArchivo(file) {
-  if (!MIMETYPES_PERMITIDOS.includes(file.mimetype))
-    return 'Tipo de archivo no permitido. Solo PDF, JPG o PNG.';
-  if (file.size > TAMANO_MAX)
-    return 'El archivo excede el tamaño máximo de 10 MB.';
-  return null;
-}
-
 function validarFileKey(key) {
   if (typeof key !== 'string' || !key.trim()) return false;
   if (key.includes('..') || key.startsWith('/') || key.includes('\0')) return false;
@@ -35,8 +24,6 @@ const guardarreporte = async (req, res, next) => {
     if (!req.file) {
       return res.status(400).json({ error: "No se ha recibido ningún archivo." });
     }
-    const errArchivo = validarArchivo(req.file);
-    if (errArchivo) return res.status(400).json({ error: errArchivo });
 
     let parsed;
     try { parsed = JSON.parse(req.body.reporte); } catch {
@@ -68,8 +55,6 @@ const guardardocumentoequipo = async (req, res, next) => {
     if (!req.file) {
       return res.status(400).json({ error: "No se ha recibido ningún archivo." });
     }
-    const errArchivo = validarArchivo(req.file);
-    if (errArchivo) return res.status(400).json({ error: errArchivo });
 
     let serieequipo, nombredocumento;
     try { serieequipo = JSON.parse(req.body.serie); } catch {
@@ -107,8 +92,6 @@ const guardarsoporteservicio = async (req, res, next) => {
     if (!req.file) {
       return res.status(400).json({ error: "No se ha recibido ningún archivo." });
     }
-    const errArchivo = validarArchivo(req.file);
-    if (errArchivo) return res.status(400).json({ error: errArchivo });
 
     let serieequipo, nombredocumento;
     try { serieequipo = JSON.parse(req.body.serie); } catch {

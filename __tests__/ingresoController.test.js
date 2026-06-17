@@ -224,6 +224,24 @@ describe('registrarIngreso', () => {
     expect(res.status).toHaveBeenCalledWith(400);
   });
 
+  it('acepta comentario y responsable null (campos opcionales según schema)', async () => {
+    mockPrisma.ingreso.findFirst.mockResolvedValue(null);
+    mockPrisma.equipo.findUnique.mockResolvedValue({ id: 1 });
+    mockPrisma.ingreso.create.mockResolvedValue({ id: 10, etapas: [] });
+
+    const etapaConNulos = {
+      ...etapaValida,
+      comentario: null,
+      responsable: null,
+    };
+    const req = mockReq({ body: { equipo: { id: 1 }, etapa: etapaConNulos } });
+    const res = mockRes();
+    await ingresoController.registrarIngreso(req, res);
+
+    expect(mockPrisma.ingreso.create).toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(201);
+  });
+
   it('llama a notificarIngresoEquipo cuando la etapa no es "Equipo nuevo"', async () => {
     const { notificarIngresoEquipo } = require('../services/whatsappService');
     mockPrisma.ingreso.findFirst.mockResolvedValue(null);
