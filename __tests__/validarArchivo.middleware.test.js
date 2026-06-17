@@ -282,12 +282,14 @@ describe('validarArchivo — casos válidos', () => {
     expect(next).toHaveBeenCalled();
   });
 
-  it('funciona correctamente cuando buffer es undefined (storage en disco)', () => {
+  it('rechaza cuando el buffer es undefined para un mimetype con firma conocida', () => {
     const next = jest.fn();
+    const res = mockRes();
     validarArchivo(
       mockReq(mockFile({ buffer: undefined })),
-      mockRes(), next
+      res, next
     );
-    expect(next).toHaveBeenCalled();
+    expect(next).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(415);
   });
 });
