@@ -44,9 +44,9 @@ exports.listaruno = async (req, res) => {
 exports.registrar = async (req, res) => {
   const prisma = req.prisma; // Obtener el cliente Prisma del request
   try {
-    // Verifica si el equipo ya existe con el mismo nombre
+    // Verifica si ya existe una referencia con el mismo nombre y marca
     const equipoExistente = await prisma.refEquipo.findUnique({
-      where: { nombre: req.body.nombre },
+      where: { nombre_marca: { nombre: req.body.nombre, marca: req.body.marca } },
     });
 
     if (equipoExistente) {

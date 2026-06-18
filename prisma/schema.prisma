@@ -84,7 +84,7 @@ model Sede {
 }
 model RefEquipo {
   id                        Int              @id @default(autoincrement()) // Clave primaria
-  nombre                    String           @unique // Nombre del equipo
+  nombre                    String // Nombre del equipo (único solo dentro de la misma marca)
   marca                     String // Marca del equipo
   fabricante                String // Fabricante del equipo
   servicio                  String // Tipo de servicio
@@ -109,6 +109,7 @@ model RefEquipo {
   createdAt                 DateTime         @default(now()) @map("created_at") // Timestamp de creación
   updatedAt                 DateTime         @updatedAt @map("updated_at") // Timestamp de actualización
 
+  @@unique([nombre, marca]) // El nombre solo debe ser único dentro de la misma marca
   @@map("ref_equipos") // Asegura que el nombre de la tabla en la base de datos sea "ref_equipos"
 }
 
