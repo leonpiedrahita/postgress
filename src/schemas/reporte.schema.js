@@ -1,11 +1,15 @@
 const { z } = require('zod');
 
 const reporteInternoSchema = z.object({
-  duracion: z.string().optional().nullable(),
+  // El FRONT lo maneja como número cuando se ajusta con los botones +/- y como
+  // string cuando se escribe directamente (changeDuration en FormularioGenerarOrden).
+  duracion: z.union([z.string(), z.number()]).optional().nullable(),
   tipodeasistencia: z.string().min(1, 'Tipo de asistencia requerido'),
   fechadeinicio: z.string().min(1, 'Fecha de inicio requerida'),
   fechadefinalizacion: z.string().optional().nullable(),
-  infoequipo: z.union([z.string(), z.number()]).optional().nullable(),
+  // Prisma lo guarda como Json; en la práctica el FRONT envía un objeto
+  // { nombre, serie, marca }, así que se acepta cualquier valor serializable.
+  infoequipo: z.any().optional().nullable(),
   propietario: z.string().optional().nullable(),
   nombrecliente: z.string().optional().nullable(),
   nitcliente: z.string().optional().nullable(),
@@ -25,6 +29,7 @@ const reporteInternoSchema = z.object({
 
 const registrarSchema = z.object({
   reporte: reporteInternoSchema,
+  id_equipo: z.coerce.number({ required_error: 'ID de equipo requerido' }),
 });
 
 // Para la ruta registrarexterno el campo reporte llega como JSON string (multipart)
