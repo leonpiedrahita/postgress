@@ -21,9 +21,9 @@ const agregarEtapaSchema = z.object({
   responsable: z.string().optional().nullable(),
   fecha: z.string().min(1, 'Fecha requerida'),
   ubicacion: z.string().min(1, 'Ubicación requerida'),
-  etapaActual: z.string().optional().nullable(),
-  ultimaEtapa: z.string().optional().nullable(),
-  estado: z.string().optional().nullable(),
+  etapaActual: z.coerce.number({ required_error: 'etapaActual requerida' }).int(),
+  ultimaEtapa: z.coerce.number({ required_error: 'ultimaEtapa requerida' }).int(),
+  estado: z.string().min(1, 'Estado requerido'),
   nuevoestadoequipo: z.string().optional().nullable(),
 });
 

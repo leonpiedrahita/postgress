@@ -31,7 +31,7 @@ const actualizarSchema = z.object({
   nombre: z.string().min(2, 'El nombre debe tener al menos 2 caracteres').optional(),
   email: z.string().email('Email inválido').optional(),
   rol: z.enum(ROLES, { errorMap: () => ({ message: `Rol inválido. Opciones: ${ROLES.join(', ')}` }) }).optional(),
-  estado: z.boolean({ invalid_type_error: 'estado debe ser un booleano' }).optional(),
+  estado: z.coerce.number().int().optional(),
   telefono: z.string().regex(TELEFONO_REGEX, 'Teléfono debe estar en formato E.164 (ej: +573001234567)').optional().nullable(),
 });
 

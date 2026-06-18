@@ -10,7 +10,7 @@ function validate(schema) {
   return (req, res, next) => {
     const result = schema.safeParse(req.body);
     if (!result.success) {
-      const detalles = result.error.errors.map(e => ({
+      const detalles = result.error.issues.map(e => ({
         campo: e.path.join('.') || 'body',
         mensaje: e.message,
       }));
