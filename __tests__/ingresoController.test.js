@@ -306,6 +306,27 @@ describe('agregarEtapa', () => {
     expect(res.status).toHaveBeenCalledWith(201);
   });
 
+  // La etapa más reciente (pendiente de confirmar) siempre debe quedar con
+  // responsable null: ese campo se completa cuando se cierre al registrarse
+  // la siguiente etapa (ahí queda quién la cerró). Ver listarMovimientosPendientes,
+  // que toma el responsable de la PENÚLTIMA etapa para "Registrado por".
+  it('crea la etapa nueva con responsable null', async () => {
+    mockPrisma.ingreso.findUnique.mockResolvedValue(ingresoAbierto);
+    mockPrisma.etapa.update.mockResolvedValue({});
+    mockPrisma.etapa.create.mockResolvedValue({ id: 11, nombre: bodyValido.nombre });
+    mockPrisma.ingreso.update.mockResolvedValue({ id: 1 });
+
+    const req = mockReq({ params: { ingresoId: '1' }, body: bodyValido });
+    const res = mockRes();
+    await ingresoController.agregarEtapa(req, res);
+
+    expect(mockPrisma.etapa.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ responsable: null }),
+      })
+    );
+  });
+
   it('retorna 400 si ingresoId no es un número', async () => {
     const res = mockRes();
     await ingresoController.agregarEtapa(
@@ -867,15 +888,23 @@ describe('listarMovimientosPendientes', () => {
   const etapasPendientes = [
     {
       id: 5, ubicacion: 'Bodega Central', confirmado: false, createdAt: new Date(),
-      ingreso: { id: 1, equipo: { id: 10, nombre: 'Ventilador', serie: 'V-001', cliente: { nombre: 'Hospital A' } } },
+      ingreso: {
+        id: 1,
+        equipo: { id: 10, nombre: 'Ventilador', serie: 'V-001', cliente: { nombre: 'Hospital A' } },
+        etapas: [{ id: 4, responsable: 'Leo' }], // penúltima etapa
+      },
     },
     {
       id: 6, ubicacion: 'Cuarentena', confirmado: false, createdAt: new Date(),
-      ingreso: { id: 2, equipo: { id: 11, nombre: 'Monitor', serie: 'M-002', cliente: { nombre: 'Clínica B' } } },
+      ingreso: {
+        id: 2,
+        equipo: { id: 11, nombre: 'Monitor', serie: 'M-002', cliente: { nombre: 'Clínica B' } },
+        etapas: [], // primera etapa del ingreso, sin penúltima
+      },
     },
   ];
 
-  it('retorna 200 con la lista de etapas pendientes', async () => {
+  it('retorna 200 con el responsable de la penúltima etapa, no el de la pendiente', async () => {
     mockPrisma.etapa.findMany.mockResolvedValue(etapasPendientes);
     const res = mockRes();
     await ingresoController.listarMovimientosPendientes(mockReq(), res);
@@ -884,7 +913,10 @@ describe('listarMovimientosPendientes', () => {
       expect.objectContaining({ where: { confirmado: false, ingreso: { estado: 'Abierto' } } })
     );
     expect(res.status).toHaveBeenCalledWith(200);
-    expect(res.json).toHaveBeenCalledWith(etapasPendientes);
+    expect(res.json).toHaveBeenCalledWith([
+      expect.objectContaining({ id: 5, responsable: 'Leo', ingreso: { id: 1, equipo: etapasPendientes[0].ingreso.equipo } }),
+      expect.objectContaining({ id: 6, responsable: null, ingreso: { id: 2, equipo: etapasPendientes[1].ingreso.equipo } }),
+    ]);
   });
 
   it('retorna 200 con array vacío cuando no hay pendientes', async () => {

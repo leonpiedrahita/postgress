@@ -348,7 +348,9 @@ exports.agregarEtapa = async (req, res) => {
       });
     }
 
-    // Crear la nueva etapa — confirmado=false si hay cambio de ubicación
+    // Crear la nueva etapa — confirmado=false si hay cambio de ubicación.
+    // responsable/comentario/fecha quedan null: se completan cuando esta etapa
+    // se cierre al registrarse la siguiente (ahí queda quién la cerró y cuándo).
     const nuevaEtapa = await prisma.etapa.create({
       data: {
         ingresoId: parseInt(ingresoId),
@@ -490,12 +492,21 @@ exports.listarMovimientosPendientes = async (req, res) => {
           select: {
             id: true,
             equipo: { select: { id: true, nombre: true, serie: true, cliente: { select: { nombre: true } } } },
+            // Penúltima etapa: quien la cerró es quien registró el movimiento hacia esta ubicación.
+            etapas: { orderBy: { id: 'desc' }, skip: 1, take: 1 },
           },
         },
       },
       orderBy: { createdAt: 'desc' },
     });
-    res.status(200).json(etapas);
+
+    const resultado = etapas.map(({ ingreso, ...etapa }) => ({
+      ...etapa,
+      responsable: ingreso.etapas[0]?.responsable ?? null,
+      ingreso: { id: ingreso.id, equipo: ingreso.equipo },
+    }));
+
+    res.status(200).json(resultado);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Ocurrió un error al listar movimientos pendientes.', detalles: err.message });
