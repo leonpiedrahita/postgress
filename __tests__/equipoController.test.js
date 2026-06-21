@@ -802,6 +802,56 @@ describe('importarAtencion', () => {
     await equipoController.importarAtencion(req, res);
     expect(res.status).toHaveBeenCalledWith(500);
   });
+
+  it('ignora el documento de cartera cuando proveedor y cliente son Biosystems (Autorizado, preventivo vigente)', async () => {
+    const futuro = new Date();
+    futuro.setFullYear(futuro.getFullYear() + 1);
+    const equipos = [{
+      id: 6,
+      fechaDePreventivo: futuro,
+      cliente: { nit: '811003513' }, // NIT_BIOSYSTEMS
+      proveedor: { nit: '811003513', nombre: 'Biosystems' }, // NIT_BIOSYSTEMS
+      referencia: { periodicidadmantenimiento: 'Anual' },
+    }];
+    mockPrisma.equipo.findMany.mockResolvedValue(equipos);
+    mockPrisma.equipo.update.mockResolvedValue({});
+    mockPrisma.$transaction.mockResolvedValue([{}]);
+
+    // El documento marca cartera vencida para Biosystems, pero debe ignorarse igual.
+    const req = mockReq({ body: { registros: [{ nit: '811003513', dias: 200 }] } });
+    const res = mockRes();
+    await equipoController.importarAtencion(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    const body = res.json.mock.calls[0][0];
+    expect(body.propioBiosystems).toBe(1);
+    expect(body.actualizados).toBe(0);
+    expect(mockPrisma.equipo.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { atencion: 'Autorizado' } })
+    );
+  });
+
+  it('ignora el documento de cartera cuando proveedor y cliente son Biosystems (MP, preventivo vencido)', async () => {
+    const equipos = [{
+      id: 7,
+      fechaDePreventivo: new Date('2020-01-01'),
+      cliente: { nit: '811003513' },
+      proveedor: { nit: '811003513', nombre: 'Biosystems' },
+      referencia: { periodicidadmantenimiento: 'Anual' },
+    }];
+    mockPrisma.equipo.findMany.mockResolvedValue(equipos);
+    mockPrisma.equipo.update.mockResolvedValue({});
+    mockPrisma.$transaction.mockResolvedValue([{}]);
+
+    const req = mockReq({ body: { registros: [{ nit: '811003513', dias: 200 }] } });
+    const res = mockRes();
+    await equipoController.importarAtencion(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(mockPrisma.equipo.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: { atencion: 'MP' } })
+    );
+  });
 });
 
 // ─── importarAsesor ───────────────────────────────────────────────────────────

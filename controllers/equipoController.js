@@ -628,19 +628,24 @@ exports.importarAtencion = async (req, res) => {
 
     let actualizados = 0;
     let enBlanco = 0;
+    let propioBiosystems = 0;
 
     const actualizaciones = equipos.map((equipo) => {
       const nitProveedor = String(equipo.proveedor?.nit || '').trim();
+      const nitCliente = String(equipo.cliente?.nit || '').trim();
       const esBiosystems = nitProveedor === NIT_BIOSYSTEMS;
-      const nitBuscar = esBiosystems
-        ? String(equipo.cliente?.nit || '').trim()
-        : nitProveedor;
-
+      // Proveedor y cliente son Biosystems: no hay tercero externo al cual
+      // aplicarle el documento de cartera, se ignora por completo.
+      const esPropioBiosystems = esBiosystems && nitCliente === NIT_BIOSYSTEMS;
+      const nitBuscar = esBiosystems ? nitCliente : nitProveedor;
       const dias = mapaCartera.has(nitBuscar) ? mapaCartera.get(nitBuscar) : null;
 
       const vencido = preventivoVencido(equipo);
       let atencion = null;
-      if (dias !== null) {
+      if (esPropioBiosystems) {
+        atencion = vencido ? 'MP' : 'Autorizado';
+        propioBiosystems++;
+      } else if (dias !== null) {
         const cartera = dias >= 90;
         if (cartera && vencido)  atencion = 'Cartera - MP';
         else if (cartera)        atencion = 'Cartera';
@@ -664,6 +669,7 @@ exports.importarAtencion = async (req, res) => {
       message: 'Importación completada',
       actualizados,
       enBlanco,
+      propioBiosystems,
       total: equipos.length,
     });
   } catch (err) {
