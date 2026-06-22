@@ -15,9 +15,9 @@ if (!destinatario) {
 async function main() {
   console.log(`\nEnviando 3 plantillas a ${destinatario}...\n`);
 
-  // 1. gomaint_nuevo_ingreso
-  console.log('1) Enviando gomaint_nuevo_ingreso...');
-  const r1 = await enviarPlantilla(destinatario, 'gomaint_nuevo_ingreso', 'es_CO', [
+  // 1. gomaint_nuevo_ingreso_responsable
+  console.log('1) Enviando gomaint_nuevo_ingreso_responsable...');
+  const r1 = await enviarPlantilla(destinatario, 'gomaint_nuevo_ingreso_responsable', 'es_CO', [
     {
       type: 'body',
       parameters: [
@@ -26,6 +26,7 @@ async function main() {
         { type: 'text', text: 'Clínica Central' },         // {{3}} cliente
         { type: 'text', text: new Date().toLocaleDateString('es-CO') }, // {{4}} fecha
         { type: 'text', text: 'Pantalla dañada - prueba de notificación' }, // {{5}} observación
+        { type: 'text', text: 'Leo Piedrahita' },           // {{6}} ingresado por
       ],
     },
   ]);

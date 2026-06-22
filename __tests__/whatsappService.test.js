@@ -111,7 +111,7 @@ describe('notificarIngresoEquipo', () => {
       serie: 'SN-001',
       cliente: { nombre: 'Clínica Central' },
     },
-    etapas: [{ comentario: 'Pantalla dañada' }],
+    etapas: [{ comentario: 'Pantalla dañada', responsable: 'Leo Piedrahita' }],
   };
 
   const usuariosMock = [
@@ -119,7 +119,7 @@ describe('notificarIngresoEquipo', () => {
     { nombre: 'Carlos Ruiz', telefono: '+573002222222' },
   ];
 
-  it('envía plantilla gomaint_nuevo_ingreso a todos los usuarios con teléfono', async () => {
+  it('envía plantilla gomaint_nuevo_ingreso_responsable a todos los usuarios con teléfono', async () => {
     mockPrismaInstance.ingreso.findUnique.mockResolvedValue(ingresoMock);
     mockPrismaInstance.usuario.findMany.mockResolvedValue(usuariosMock);
     axios.post.mockResolvedValue({ data: {} });
@@ -128,9 +128,35 @@ describe('notificarIngresoEquipo', () => {
 
     expect(axios.post).toHaveBeenCalledTimes(2);
     const llamadas = axios.post.mock.calls;
-    expect(llamadas[0][1].template.name).toBe('gomaint_nuevo_ingreso');
+    expect(llamadas[0][1].template.name).toBe('gomaint_nuevo_ingreso_responsable');
     expect(llamadas[0][1].to).toBe('+573001111111');
     expect(llamadas[1][1].to).toBe('+573002222222');
+  });
+
+  it('incluye el responsable de la etapa inicial como sexto parámetro', async () => {
+    mockPrismaInstance.ingreso.findUnique.mockResolvedValue(ingresoMock);
+    mockPrismaInstance.usuario.findMany.mockResolvedValue(usuariosMock);
+    axios.post.mockResolvedValue({ data: {} });
+
+    await notificarIngresoEquipo(1);
+
+    const parametros = axios.post.mock.calls[0][1].template.components[0].parameters;
+    expect(parametros).toHaveLength(6);
+    expect(parametros[5]).toEqual({ type: 'text', text: 'Leo Piedrahita' });
+  });
+
+  it('usa "Sin responsable" cuando la etapa inicial no tiene responsable', async () => {
+    mockPrismaInstance.ingreso.findUnique.mockResolvedValue({
+      ...ingresoMock,
+      etapas: [{ comentario: 'Pantalla dañada', responsable: null }],
+    });
+    mockPrismaInstance.usuario.findMany.mockResolvedValue(usuariosMock);
+    axios.post.mockResolvedValue({ data: {} });
+
+    await notificarIngresoEquipo(1);
+
+    const parametros = axios.post.mock.calls[0][1].template.components[0].parameters;
+    expect(parametros[5]).toEqual({ type: 'text', text: 'Sin responsable' });
   });
 
   it('pasa los roles habilitados de la BD a la consulta de usuarios', async () => {

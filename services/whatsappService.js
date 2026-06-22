@@ -124,7 +124,7 @@ async function enviarMensajeTexto(destinatario, texto) {
 
 /**
  * Notifica cuando se registra un nuevo ingreso de equipo.
- * Usa la plantilla "gomaint_nuevo_ingreso".
+ * Usa la plantilla "gomaint_nuevo_ingreso_responsable" (es_CO).
  * Destinatarios: roles habilitados para tipo "ingreso" en la tabla de configuración.
  * @param {number} ingresoId
  * @returns {Promise<void>}
@@ -178,12 +178,13 @@ async function notificarIngresoEquipo(ingresoId) {
           { type: 'text', text: equipo.cliente?.nombre || 'Sin cliente' },
           { type: 'text', text: fecha },
           { type: 'text', text: etapaInicial?.comentario || 'Sin observación' },
+          { type: 'text', text: etapaInicial?.responsable || 'Sin responsable' },
         ],
       },
     ];
 
     for (const u of usuarios) {
-      await enviarPlantilla(u.telefono, 'gomaint_nuevo_ingreso', 'es_CO', componentes);
+      await enviarPlantilla(u.telefono, 'gomaint_nuevo_ingreso_responsable', 'es_CO', componentes);
     }
   } catch (err) {
     console.error('[WhatsApp] Error en notificarIngresoEquipo:', err.message);
