@@ -433,19 +433,16 @@ exports.confirmarMovimiento = async (req, res) => {
     const confirmadoPor = req.usuario.nombre;
     const fechaConfirmacion = new Date();
 
-    await prisma.$transaction([
-      prisma.etapa.update({
-        where: { id: etapaId },
-        data: { confirmado: true, confirmadoPor, fechaConfirmacion },
-      }),
-      prisma.equipo.update({
-        where: { id: etapa.ingreso.equipoId },
-        data: { ubicacionNombre: etapa.ubicacion },
-      }),
-    ]);
+    // Solo se confirma la etapa (seguimiento interno). No se toca
+    // Equipo.ubicacionNombre/ubicacionDireccion: esos campos representan la
+    // ciudad/sede del cliente, no la ubicación interna de seguimiento.
+    await prisma.etapa.update({
+      where: { id: etapaId },
+      data: { confirmado: true, confirmadoPor, fechaConfirmacion },
+    });
 
     res.status(200).json({
-      message: 'Movimiento confirmado. Ubicación del equipo actualizada.',
+      message: 'Movimiento confirmado.',
       etapaId,
       ubicacionConfirmada: etapa.ubicacion,
       confirmadoPor,

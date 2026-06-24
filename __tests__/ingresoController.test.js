@@ -698,8 +698,6 @@ describe('confirmarMovimiento', () => {
 
   const setupConfirmar = () => {
     mockPrisma.etapa.update.mockResolvedValue({});
-    mockPrisma.equipo.update.mockResolvedValue({});
-    mockPrisma.$transaction.mockResolvedValue([{}, {}]);
   };
 
   it('retorna 400 si ingresoId o etapaId no son números', async () => {
@@ -791,8 +789,24 @@ describe('confirmarMovimiento', () => {
       mockReq({ params: { ingresoId: '1', etapaId: '5' }, usuario: { rol: 'bodega', nombre: 'Ana' } }),
       res
     );
-    expect(mockPrisma.$transaction).toHaveBeenCalled();
+    expect(mockPrisma.etapa.update).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: 5 }, data: expect.objectContaining({ confirmado: true, confirmadoPor: 'Ana' }) })
+    );
     expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  // Regresión: confirmar un movimiento interno NO debe tocar Equipo.ubicacionNombre
+  // ni ubicacionDireccion — esos campos representan la ciudad/sede del cliente,
+  // no la ubicación interna de seguimiento (Etapa.ubicacion).
+  it('no modifica la ciudad/sede del cliente (Equipo.ubicacionNombre) al confirmar', async () => {
+    mockPrisma.etapa.findUnique.mockResolvedValue(etapaBodega);
+    setupConfirmar();
+    const res = mockRes();
+    await ingresoController.confirmarMovimiento(
+      mockReq({ params: { ingresoId: '1', etapaId: '5' }, usuario: { rol: 'bodega', nombre: 'Ana' } }),
+      res
+    );
+    expect(mockPrisma.equipo.update).not.toHaveBeenCalled();
   });
 
   it('ingresos puede confirmar ubicación de bodega — retorna 200', async () => {
