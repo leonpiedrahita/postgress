@@ -42,6 +42,43 @@ async function getRolesHabilitados(tipo) {
 }
 
 /**
+ * Resuelve los usuarios a notificar a partir de los roles habilitados: los
+ * roles no-comerciales se notifican completos, pero el rol 'comercial' solo
+ * se notifica si está asignado como asesor del equipo en cuestión (evita
+ * avisarle a comerciales sobre equipos de clientes que no son suyos).
+ * @param {string[]} rolesHabilitados
+ * @param {string|null|undefined} asesor - equipo.asesor
+ * @param {{nombre: boolean}} [select] - campos a seleccionar (siempre incluye telefono)
+ * @returns {Promise<Array<{telefono: string, nombre?: string}>>}
+ */
+async function usuariosParaNotificar(rolesHabilitados, asesor, select = {}) {
+  const camposSelect = { ...select, telefono: true };
+  const otrosRoles = rolesHabilitados.filter(r => r !== 'comercial');
+
+  const [usuariosOtros, usuariosComercial] = await Promise.all([
+    otrosRoles.length
+      ? prisma.usuario.findMany({
+          where: { rol: { in: otrosRoles }, estado: 1, telefono: { not: null } },
+          select: camposSelect,
+        })
+      : Promise.resolve([]),
+    rolesHabilitados.includes('comercial') && asesor
+      ? prisma.usuario.findMany({
+          where: { rol: 'comercial', estado: 1, telefono: { not: null }, nombre: asesor },
+          select: camposSelect,
+        })
+      : Promise.resolve([]),
+  ]);
+
+  const vistos = new Set();
+  return [...usuariosOtros, ...usuariosComercial].filter(u => {
+    if (vistos.has(u.telefono)) return false;
+    vistos.add(u.telefono);
+    return true;
+  });
+}
+
+/**
  * Valida formato E.164 (+57XXXXXXXXXX)
  * @param {string} numero
  * @returns {boolean}
@@ -125,7 +162,8 @@ async function enviarMensajeTexto(destinatario, texto) {
 /**
  * Notifica cuando se registra un nuevo ingreso de equipo.
  * Usa la plantilla "gomaint_nuevo_ingreso_responsable" (es_CO).
- * Destinatarios: roles habilitados para tipo "ingreso" en la tabla de configuración.
+ * Destinatarios: roles habilitados para tipo "ingreso" en la tabla de
+ * configuración; el rol comercial solo si está asignado como asesor del equipo.
  * @param {number} ingresoId
  * @returns {Promise<void>}
  */
@@ -151,21 +189,14 @@ async function notificarIngresoEquipo(ingresoId) {
       return;
     }
 
-    const usuarios = await prisma.usuario.findMany({
-      where: {
-        rol: { in: rolesHabilitados },
-        estado: 1,
-        telefono: { not: null },
-      },
-      select: { nombre: true, telefono: true },
-    });
+    const equipo = ingreso.equipo;
+    const usuarios = await usuariosParaNotificar(rolesHabilitados, equipo.asesor, { nombre: true });
 
     if (!usuarios.length) {
       console.warn('[WhatsApp] No hay usuarios con teléfono registrado para notificar nuevo ingreso.');
       return;
     }
 
-    const equipo = ingreso.equipo;
     const etapaInicial = ingreso.etapas[0];
     const fecha = new Date(ingreso.createdAt).toLocaleDateString('es-CO');
 
@@ -354,6 +385,7 @@ async function notificarMovimientoPendiente(ingresoId, etapaId, datos) {
 
 /**
  * Notifica a roles operativos que un movimiento fue confirmado físicamente.
+ * El rol comercial solo se notifica si está asignado como asesor del equipo.
  * @param {number} ingresoId
  * @param {number} etapaId
  * @param {{ confirmadoPor: string }} datos
@@ -374,14 +406,11 @@ async function notificarConfirmacionMovimiento(ingresoId, etapaId, datos) {
     const rolesHabilitados = await getRolesHabilitados('ingreso');
     if (!rolesHabilitados.length) return;
 
-    const usuarios = await prisma.usuario.findMany({
-      where: { rol: { in: rolesHabilitados }, estado: 1, telefono: { not: null } },
-      select: { telefono: true },
-    });
+    const equipo = etapa.ingreso.equipo;
+    const usuarios = await usuariosParaNotificar(rolesHabilitados, equipo.asesor);
 
     if (!usuarios.length) return;
 
-    const equipo = etapa.ingreso.equipo;
     const componentes = [{
       type: 'body',
       parameters: [

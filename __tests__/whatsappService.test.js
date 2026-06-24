@@ -12,6 +12,7 @@ const mockCfgNotif = {
 
 const mockPrismaInstance = {
   ingreso: { findUnique: jest.fn() },
+  etapa: { findUnique: jest.fn() },
   usuario: { findMany: jest.fn() },
   configuracionNotificacion: mockCfgNotif,
 };
@@ -21,6 +22,7 @@ const {
   enviarMensajeTexto,
   notificarIngresoEquipo,
   notificarCambioEtapa,
+  notificarConfirmacionMovimiento,
 } = require('../services/whatsappService');
 
 const NUMERO_VALIDO = '+573001234567';
@@ -159,7 +161,7 @@ describe('notificarIngresoEquipo', () => {
     expect(parametros[5]).toEqual({ type: 'text', text: 'Sin responsable' });
   });
 
-  it('pasa los roles habilitados de la BD a la consulta de usuarios', async () => {
+  it('pasa los roles no-comerciales habilitados a la consulta de usuarios', async () => {
     mockCfgNotif.findMany.mockResolvedValue([{ rol: 'soporte' }, { rol: 'comercial' }]);
     mockPrismaInstance.ingreso.findUnique.mockResolvedValue(ingresoMock);
     mockPrismaInstance.usuario.findMany.mockResolvedValue(usuariosMock);
@@ -167,10 +169,51 @@ describe('notificarIngresoEquipo', () => {
 
     await notificarIngresoEquipo(1);
 
+    // El equipo no tiene asesor asignado, así que no se consulta comercial.
+    expect(mockPrismaInstance.usuario.findMany).toHaveBeenCalledTimes(1);
     const callArg = mockPrismaInstance.usuario.findMany.mock.calls[0][0];
     expect(callArg.where.rol.in).toContain('soporte');
-    expect(callArg.where.rol.in).toContain('comercial');
     expect(callArg.where.rol.in).toContain('administrador');
+    expect(callArg.where.rol.in).not.toContain('comercial');
+  });
+
+  // Regresión: los asesores comerciales reportaban recibir notificaciones de
+  // equipos de clientes que no eran suyos. La causa: el rol comercial se
+  // notificaba junto con los demás roles, sin filtrar por equipo.asesor.
+  it('solo notifica al comercial asignado como asesor del equipo, no a otros comerciales', async () => {
+    mockCfgNotif.findMany.mockResolvedValue([{ rol: 'comercial' }]);
+    mockPrismaInstance.ingreso.findUnique.mockResolvedValue({
+      ...ingresoMock,
+      equipo: { ...ingresoMock.equipo, asesor: 'Ana López' },
+    });
+    mockPrismaInstance.usuario.findMany.mockResolvedValue([
+      { nombre: 'Ana López', telefono: '+573001111111' },
+    ]);
+    axios.post.mockResolvedValue({ data: {} });
+
+    await notificarIngresoEquipo(1);
+
+    const callArg = mockPrismaInstance.usuario.findMany.mock.calls.find(c => c[0].where.rol === 'comercial')[0];
+    expect(callArg.where.nombre).toBe('Ana López');
+    expect(axios.post).toHaveBeenCalledTimes(1);
+    expect(axios.post.mock.calls[0][1].to).toBe('+573001111111');
+  });
+
+  it('no consulta comercial si el equipo no tiene asesor asignado (solo administrador, auto-incluido)', async () => {
+    mockCfgNotif.findMany.mockResolvedValue([{ rol: 'comercial' }]);
+    mockPrismaInstance.ingreso.findUnique.mockResolvedValue({
+      ...ingresoMock,
+      equipo: { ...ingresoMock.equipo, asesor: null },
+    });
+    mockPrismaInstance.usuario.findMany.mockResolvedValue([]);
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    await notificarIngresoEquipo(1);
+
+    // Una sola consulta (administrador, auto-incluido); ninguna por rol comercial.
+    expect(mockPrismaInstance.usuario.findMany).toHaveBeenCalledTimes(1);
+    expect(mockPrismaInstance.usuario.findMany.mock.calls[0][0].where.rol).toEqual({ in: ['administrador'] });
+    expect(axios.post).not.toHaveBeenCalled();
   });
 
   it('no envía nada si el toggle global está desactivado', async () => {
@@ -451,6 +494,75 @@ describe('notificarCambioEtapa — lógica comercial', () => {
     jest.spyOn(console, 'warn').mockImplementation(() => {});
 
     await notificarCambioEtapa(10, datosEtapaBase);
+
+    expect(axios.post).not.toHaveBeenCalled();
+  });
+});
+
+// ─── notificarConfirmacionMovimiento ──────────────────────────────────────────
+// Regresión: misma causa que notificarIngresoEquipo -- el rol comercial se
+// notificaba sin filtrar por equipo.asesor.
+
+describe('notificarConfirmacionMovimiento', () => {
+  const etapaMock = {
+    id: 7,
+    ubicacion: 'Bodega Central',
+    ingreso: {
+      equipo: {
+        nombre: 'Monitor Multiparámetros',
+        serie: 'SN-001',
+        cliente: { nombre: 'Clínica Central' },
+      },
+    },
+  };
+
+  it('notifica a los roles no-comerciales habilitados', async () => {
+    mockCfgNotif.findMany.mockResolvedValue([{ rol: 'bodega' }]);
+    mockPrismaInstance.etapa.findUnique.mockResolvedValue(etapaMock);
+    mockPrismaInstance.usuario.findMany.mockResolvedValue([{ telefono: '+573001111111' }]);
+    axios.post.mockResolvedValue({ data: {} });
+
+    await notificarConfirmacionMovimiento(1, 7, { confirmadoPor: 'Ana López' });
+
+    expect(axios.post).toHaveBeenCalledTimes(1);
+    expect(axios.post.mock.calls[0][1].to).toBe('+573001111111');
+  });
+
+  it('solo notifica al comercial asignado como asesor del equipo', async () => {
+    mockCfgNotif.findMany.mockResolvedValue([{ rol: 'comercial' }]);
+    mockPrismaInstance.etapa.findUnique.mockResolvedValue({
+      ...etapaMock,
+      ingreso: { equipo: { ...etapaMock.ingreso.equipo, asesor: 'Ana López' } },
+    });
+    mockPrismaInstance.usuario.findMany.mockResolvedValue([
+      { telefono: '+573001111111' },
+    ]);
+    axios.post.mockResolvedValue({ data: {} });
+
+    await notificarConfirmacionMovimiento(1, 7, { confirmadoPor: 'Ana López' });
+
+    const callArg = mockPrismaInstance.usuario.findMany.mock.calls.find(c => c[0].where.rol === 'comercial')[0];
+    expect(callArg.where.nombre).toBe('Ana López');
+  });
+
+  it('no consulta comercial si el equipo no tiene asesor asignado', async () => {
+    mockCfgNotif.findMany.mockResolvedValue([{ rol: 'comercial' }]);
+    mockPrismaInstance.etapa.findUnique.mockResolvedValue({
+      ...etapaMock,
+      ingreso: { equipo: { ...etapaMock.ingreso.equipo, asesor: null } },
+    });
+    mockPrismaInstance.usuario.findMany.mockResolvedValue([]);
+
+    await notificarConfirmacionMovimiento(1, 7, { confirmadoPor: 'Ana López' });
+
+    expect(mockPrismaInstance.usuario.findMany).toHaveBeenCalledTimes(1);
+    expect(mockPrismaInstance.usuario.findMany.mock.calls[0][0].where.rol).toEqual({ in: ['administrador'] });
+  });
+
+  it('no hace nada si la etapa no existe', async () => {
+    mockPrismaInstance.etapa.findUnique.mockResolvedValue(null);
+
+    await notificarConfirmacionMovimiento(1, 999, { confirmadoPor: 'Ana López' });
 
     expect(axios.post).not.toHaveBeenCalled();
   });
