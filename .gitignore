@@ -5,3 +5,5 @@ node_modules
 coverage/
 # Scripts de diagnóstico y utilidades locales
 scripts/checkDB.js
+scripts/reporte-entrenamiento.js
+scripts/reporte-entrenamiento.xlsx

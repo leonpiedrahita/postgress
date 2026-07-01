@@ -1,6 +1,7 @@
 const path = require('path');
 
-const TAMANO_MAX = 10 * 1024 * 1024; // 10 MB
+const TAMANO_MAX = 10 * 1024 * 1024;        // 10 MB  (uso general)
+const TAMANO_MAX_GRANDE = 100 * 1024 * 1024; // 100 MB (manuales y brochures)
 
 // MIME type → extensiones válidas
 const TIPOS_PERMITIDOS = {
@@ -56,49 +57,55 @@ function verificarMagicBytes(mime, buffer) {
 }
 
 /**
- * Middleware Express que valida tipo MIME, extensión, tamaño y bytes mágicos
+ * Crea un middleware Express que valida tipo MIME, extensión, tamaño y bytes mágicos
  * del archivo subido por multer (memoryStorage).
  * Debe ejecutarse después de upload.single() y antes del controller.
  */
-function validarArchivo(req, res, next) {
-  if (!req.file) {
-    return res.status(400).json({ error: 'No se ha proporcionado un archivo.' });
-  }
+function crearValidadorArchivo(tamanoMax) {
+  const mbLabel = Math.round(tamanoMax / (1024 * 1024));
+  return function validarArchivo(req, res, next) {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No se ha proporcionado un archivo.' });
+    }
 
-  const { mimetype, originalname, size, buffer } = req.file;
+    const { mimetype, originalname, size, buffer } = req.file;
 
-  // 1. MIME type en la lista permitida
-  if (!TIPOS_PERMITIDOS[mimetype]) {
-    return res.status(415).json({
-      error: 'Tipo de archivo no permitido.',
-      permitidos: Object.keys(TIPOS_PERMITIDOS),
-    });
-  }
+    // 1. MIME type en la lista permitida
+    if (!TIPOS_PERMITIDOS[mimetype]) {
+      return res.status(415).json({
+        error: 'Tipo de archivo no permitido.',
+        permitidos: Object.keys(TIPOS_PERMITIDOS),
+      });
+    }
 
-  // 2. Extensión coherente con el MIME type declarado
-  const ext = path.extname(originalname).toLowerCase();
-  if (!ext) {
-    return res.status(415).json({ error: 'El archivo debe tener extensión.' });
-  }
-  if (!TIPOS_PERMITIDOS[mimetype].includes(ext)) {
-    return res.status(415).json({
-      error: `La extensión "${ext}" no corresponde al tipo "${mimetype}".`,
-    });
-  }
+    // 2. Extensión coherente con el MIME type declarado
+    const ext = path.extname(originalname).toLowerCase();
+    if (!ext) {
+      return res.status(415).json({ error: 'El archivo debe tener extensión.' });
+    }
+    if (!TIPOS_PERMITIDOS[mimetype].includes(ext)) {
+      return res.status(415).json({
+        error: `La extensión "${ext}" no corresponde al tipo "${mimetype}".`,
+      });
+    }
 
-  // 3. Tamaño máximo (respaldo al límite configurado en multer)
-  if (size > TAMANO_MAX) {
-    return res.status(413).json({ error: 'El archivo excede el tamaño máximo de 10 MB.' });
-  }
+    // 3. Tamaño máximo (respaldo al límite configurado en multer)
+    if (size > tamanoMax) {
+      return res.status(413).json({ error: `El archivo excede el tamaño máximo de ${mbLabel} MB.` });
+    }
 
-  // 4. Bytes mágicos — verifica el contenido real del buffer
-  if (!verificarMagicBytes(mimetype, buffer)) {
-    return res.status(415).json({
-      error: 'El contenido del archivo no coincide con su tipo declarado.',
-    });
-  }
+    // 4. Bytes mágicos — verifica el contenido real del buffer
+    if (!verificarMagicBytes(mimetype, buffer)) {
+      return res.status(415).json({
+        error: 'El contenido del archivo no coincide con su tipo declarado.',
+      });
+    }
 
-  next();
+    next();
+  };
 }
 
-module.exports = { validarArchivo, TIPOS_PERMITIDOS, TAMANO_MAX, verificarMagicBytes };
+const validarArchivo = crearValidadorArchivo(TAMANO_MAX);
+const validarArchivoGrande = crearValidadorArchivo(TAMANO_MAX_GRANDE);
+
+module.exports = { validarArchivo, validarArchivoGrande, TIPOS_PERMITIDOS, TAMANO_MAX, TAMANO_MAX_GRANDE, verificarMagicBytes };

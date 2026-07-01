@@ -8,13 +8,11 @@ const equipoController = require('../../../controllers/equipoController');
 const refequipoController = require('../../../controllers/refequipoController');
 const auth = require('../../middleware/auth');
 const attachPrisma = require('../../middleware/attachPrisma');
-const { validarArchivo, TAMANO_MAX } = require('../../middleware/validarArchivo');
+const { validarArchivo, validarArchivoGrande, TAMANO_MAX, TAMANO_MAX_GRANDE } = require('../../middleware/validarArchivo');
 
 const storage = multer.memoryStorage();
-const upload = multer({
-  storage,
-  limits: { fileSize: TAMANO_MAX },
-});
+const upload = multer({ storage, limits: { fileSize: TAMANO_MAX } });
+const uploadGrande = multer({ storage, limits: { fileSize: TAMANO_MAX_GRANDE } });
 
 // Wrapper que convierte errores de multer (ej. LIMIT_FILE_SIZE) en respuestas JSON
 function handleUpload(req, res, next) {
@@ -22,6 +20,17 @@ function handleUpload(req, res, next) {
     if (!err) return next();
     if (err.code === 'LIMIT_FILE_SIZE') {
       return res.status(413).json({ error: 'El archivo excede el tamaño máximo de 10 MB.' });
+    }
+    return res.status(400).json({ error: `Error al procesar el archivo: ${err.message}` });
+  });
+}
+
+// Wrapper para manuales y brochures (hasta 100 MB)
+function handleUploadGrande(req, res, next) {
+  uploadGrande.single('file')(req, res, (err) => {
+    if (!err) return next();
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json({ error: 'El archivo excede el tamaño máximo de 100 MB.' });
     }
     return res.status(400).json({ error: `Error al procesar el archivo: ${err.message}` });
   });
@@ -59,9 +68,9 @@ router.post(
 
 router.post(
   '/guardardocumentoreferencia',
-  handleUpload,
+  handleUploadGrande,
   auth.verificarUsuario,
-  validarArchivo,
+  validarArchivoGrande,
   s3Controller.guardardocumentoequipo,
   refequipoController.registrardocumento,
   (req, res) => {
