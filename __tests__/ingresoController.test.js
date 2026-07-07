@@ -428,6 +428,67 @@ describe('listarIngresosPorEstado', () => {
     );
     expect(res.status).toHaveBeenCalledWith(500);
   });
+
+  // ─── Whitelist de estados (fix de seguridad) ────────────────────────────────
+  ['Abierto', 'Cerrado'].forEach(estado => {
+    it(`acepta el estado válido "${estado}" y retorna 200`, async () => {
+      mockPrisma.ingreso.findMany.mockResolvedValue([]);
+
+      const res = mockRes();
+      await ingresoController.listarIngresosPorEstado(
+        mockReq({ params: { estado } }),
+        res
+      );
+
+      expect(mockPrisma.ingreso.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { estado } })
+      );
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+  });
+
+  it('retorna 400 con "abierto" en minúscula (la whitelist es case-sensitive)', async () => {
+    const res = mockRes();
+    await ingresoController.listarIngresosPorEstado(
+      mockReq({ params: { estado: 'abierto' } }),
+      res
+    );
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Estado inválido' });
+    expect(mockPrisma.ingreso.findMany).not.toHaveBeenCalled();
+  });
+
+  it('retorna 400 ante intento de inyección en el parámetro estado', async () => {
+    const res = mockRes();
+    await ingresoController.listarIngresosPorEstado(
+      mockReq({ params: { estado: 'Robert"); DROP TABLE Ingreso;--' } }),
+      res
+    );
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Estado inválido' });
+    expect(mockPrisma.ingreso.findMany).not.toHaveBeenCalled();
+  });
+
+  it('retorna 400 si el estado es string vacío', async () => {
+    const res = mockRes();
+    await ingresoController.listarIngresosPorEstado(
+      mockReq({ params: { estado: '' } }),
+      res
+    );
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(mockPrisma.ingreso.findMany).not.toHaveBeenCalled();
+  });
+
+  it('retorna 400 si no se envía el parámetro estado', async () => {
+    const res = mockRes();
+    await ingresoController.listarIngresosPorEstado(mockReq({ params: {} }), res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(mockPrisma.ingreso.findMany).not.toHaveBeenCalled();
+  });
 });
 
 // ─── listarIngresosPorSerieDeEquipo ───────────────────────────────────────────

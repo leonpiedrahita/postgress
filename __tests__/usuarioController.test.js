@@ -555,6 +555,20 @@ describe('actualizarfirma', () => {
     expect(mockPrismaInternal.usuario.update).not.toHaveBeenCalled();
   });
 
+  // ─── Validación estricta de ID (fix de seguridad) ───────────────────────────
+  ['abc', '0', '-1'].forEach(id => {
+    it(`retorna 400 con id inválido "${id}" sin tocar la BD`, async () => {
+      const res = mockRes();
+      await usuarioController.actualizarfirma(
+        mockReq({ params: { id }, body: { firma: 'data:image/png;base64,ABC' } }),
+        res
+      );
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ error: 'ID inválido' });
+      expect(mockPrismaInternal.usuario.update).not.toHaveBeenCalled();
+    });
+  });
+
   it('retorna 500 si Prisma lanza error', async () => {
     tokenServices.decode.mockResolvedValue({ id: 1, nombre: 'Admin', rol: 'administrador' });
     mockPrismaInternal.usuario.update.mockRejectedValue(new Error('DB error'));

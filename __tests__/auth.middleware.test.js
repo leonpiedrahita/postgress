@@ -25,10 +25,10 @@ beforeEach(() => jest.clearAllMocks());
 
 // ─── verificarUsuario ─────────────────────────────────────────────────────────
 describe('verificarUsuario', () => {
-  it('retorna 404 si no hay token', async () => {
+  it('retorna 401 si no hay token', async () => {
     const res = mockRes();
     await auth.verificarUsuario(mockReq(), res, mockNext);
-    expect(res.status).toHaveBeenCalledWith(404);
+    expect(res.status).toHaveBeenCalledWith(401);
     expect(mockNext).not.toHaveBeenCalled();
   });
 
@@ -56,6 +56,55 @@ describe('verificarUsuario', () => {
     expect(mockNext).toHaveBeenCalled();
     expect(req.prisma).toBeDefined();
     expect(getPrismaWithUser).toHaveBeenCalledWith('Leo');
+  });
+
+  it('acepta el token vía header Authorization: Bearer xxx', async () => {
+    tokenServices.decode.mockResolvedValue({ id: 1, nombre: 'Leo', rol: 'administrador' });
+    const req = mockReq({ headers: { authorization: 'Bearer jwt-valido' } });
+    const res = mockRes();
+    await auth.verificarUsuario(req, res, mockNext);
+    // Debe extraer solo el token, sin el prefijo "Bearer "
+    expect(tokenServices.decode).toHaveBeenCalledWith('jwt-valido');
+    expect(mockNext).toHaveBeenCalled();
+  });
+
+  it('retorna 401 si Authorization no tiene prefijo Bearer y no hay header token', async () => {
+    const res = mockRes();
+    await auth.verificarUsuario(
+      mockReq({ headers: { authorization: 'jwt-sin-prefijo' } }),
+      res,
+      mockNext
+    );
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(tokenServices.decode).not.toHaveBeenCalled();
+    expect(mockNext).not.toHaveBeenCalled();
+  });
+
+  it('retorna 401 si el header token es string vacío', async () => {
+    const res = mockRes();
+    await auth.verificarUsuario(mockReq({ headers: { token: '' } }), res, mockNext);
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(tokenServices.decode).not.toHaveBeenCalled();
+  });
+
+  it('retorna 401 si Authorization es solo "Bearer " (token vacío tras el prefijo)', async () => {
+    const res = mockRes();
+    await auth.verificarUsuario(
+      mockReq({ headers: { authorization: 'Bearer ' } }),
+      res,
+      mockNext
+    );
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(mockNext).not.toHaveBeenCalled();
+  });
+
+  it('el header Authorization con Bearer tiene prioridad sobre el header token', async () => {
+    tokenServices.decode.mockResolvedValue({ id: 1, nombre: 'Leo', rol: 'administrador' });
+    const req = mockReq({ headers: { authorization: 'Bearer token-bearer', token: 'token-legacy' } });
+    const res = mockRes();
+    await auth.verificarUsuario(req, res, mockNext);
+    expect(tokenServices.decode).toHaveBeenCalledWith('token-bearer');
+    expect(mockNext).toHaveBeenCalled();
   });
 });
 
