@@ -569,6 +569,47 @@ describe('actualizarfirma', () => {
     });
   });
 
+  // ─── Validación del campo firma (fix de seguridad) ──────────────────────────
+  [
+    ['undefined', undefined],
+    ['null', null],
+    ['número', 123],
+    ['objeto', { data: 'x' }],
+    ['string vacío', ''],
+  ].forEach(([desc, firma]) => {
+    it(`retorna 400 si firma es ${desc} sin tocar la BD`, async () => {
+      const res = mockRes();
+      await usuarioController.actualizarfirma(
+        mockReq({ params: { id: '1' }, body: { firma } }),
+        res
+      );
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ error: 'Campo firma inválido' });
+      expect(mockPrismaInternal.usuario.update).not.toHaveBeenCalled();
+    });
+  });
+
+  it('retorna 400 si firma excede el tamaño máximo (700001 chars)', async () => {
+    const res = mockRes();
+    await usuarioController.actualizarfirma(
+      mockReq({ params: { id: '1' }, body: { firma: 'a'.repeat(700001) } }),
+      res
+    );
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Campo firma inválido' });
+    expect(mockPrismaInternal.usuario.update).not.toHaveBeenCalled();
+  });
+
+  it('acepta firma en el límite exacto de tamaño (700000 chars)', async () => {
+    mockPrismaInternal.usuario.update.mockResolvedValue({ id: 1, nombre: 'A', email: 'a@t.co' });
+    const res = mockRes();
+    await usuarioController.actualizarfirma(
+      mockReq({ params: { id: '1' }, body: { firma: 'a'.repeat(700000) } }),
+      res
+    );
+    expect(res.status).toHaveBeenCalledWith(200);
+  });
+
   it('retorna 500 si Prisma lanza error', async () => {
     tokenServices.decode.mockResolvedValue({ id: 1, nombre: 'Admin', rol: 'administrador' });
     mockPrismaInternal.usuario.update.mockRejectedValue(new Error('DB error'));

@@ -276,3 +276,86 @@ describe('registrarexterno', () => {
     expect(res.status).toHaveBeenCalledWith(500);
   });
 });
+
+// ─── listaruno ────────────────────────────────────────────────────────────────
+describe('listaruno', () => {
+  it('retorna 200 con el reporte y convierte el id a número', async () => {
+    const reporte = { id: 5, tipodeasistencia: 'Preventivo' };
+    mockReporte.findUnique.mockResolvedValue(reporte);
+
+    const res = mockRes();
+    await reporteController.listaruno(mockReq({ params: { id: '5' } }), res);
+
+    expect(mockReporte.findUnique).toHaveBeenCalledWith({ where: { id: 5 } });
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(reporte);
+  });
+
+  it('retorna 404 si el reporte no existe', async () => {
+    mockReporte.findUnique.mockResolvedValue(null);
+    const res = mockRes();
+    await reporteController.listaruno(mockReq({ params: { id: '999' } }), res);
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Reporte no encontrado' });
+  });
+
+  ['abc', '0', '-1'].forEach(id => {
+    it(`retorna 400 con id inválido "${id}" sin tocar la BD`, async () => {
+      const res = mockRes();
+      await reporteController.listaruno(mockReq({ params: { id } }), res);
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ error: 'ID inválido' });
+      expect(mockReporte.findUnique).not.toHaveBeenCalled();
+    });
+  });
+
+  it('retorna 500 si Prisma lanza error', async () => {
+    mockReporte.findUnique.mockRejectedValue(new Error('DB error'));
+    const res = mockRes();
+    await reporteController.listaruno(mockReq({ params: { id: '1' } }), res);
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Error interno del servidor' });
+  });
+});
+
+// ─── actualizar ───────────────────────────────────────────────────────────────
+describe('actualizar', () => {
+  it('actualiza el modelo REPORTE (no equipo) con id numérico', async () => {
+    const actualizado = { id: 3, observaciones: 'Editado' };
+    mockReporte.update.mockResolvedValue(actualizado);
+
+    const res = mockRes();
+    await reporteController.actualizar(
+      mockReq({ params: { id: '3' }, body: { observaciones: 'Editado' } }),
+      res
+    );
+
+    expect(mockReporte.update).toHaveBeenCalledWith({
+      where: { id: 3 },
+      data: { observaciones: 'Editado' },
+    });
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ message: 'Reporte actualizado', reporte: actualizado });
+  });
+
+  ['abc', '0', '-1'].forEach(id => {
+    it(`retorna 400 con id inválido "${id}" sin tocar la BD`, async () => {
+      const res = mockRes();
+      await reporteController.actualizar(mockReq({ params: { id }, body: {} }), res);
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ error: 'ID inválido' });
+      expect(mockReporte.update).not.toHaveBeenCalled();
+    });
+  });
+
+  it('retorna 500 con mensaje genérico si Prisma lanza error', async () => {
+    mockReporte.update.mockRejectedValue(new Error('DB error'));
+    const res = mockRes();
+    await reporteController.actualizar(
+      mockReq({ params: { id: '3' }, body: { observaciones: 'X' } }),
+      res
+    );
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Error interno del servidor' });
+  });
+});

@@ -14,18 +14,20 @@ exports.listar = async (req, res) => {
 };
 
 exports.listaruno = async (req, res) => {
-  
- const prisma = req.prisma;
-  const id = req.params.id;
+  const prisma = req.prisma;
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: 'ID inválido' });
+  }
   try {
     const reporte = await prisma.reporte.findUnique({
-      where: { id: id },
+      where: { id },
     });
 
     if (reporte) {
       res.status(200).json(reporte);
     } else {
-      res.json("nada");
+      res.status(404).json({ error: 'Reporte no encontrado' });
     }
   } catch (err) {
     console.error(err);
@@ -126,19 +128,23 @@ exports.registrarexterno = async (req, res, next) => {
 };
 
 exports.actualizar = async (req, res) => {
-  const prisma = req.prisma;  
-  const id = req.params.id;
+  const prisma = req.prisma;
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ error: 'ID inválido' });
+  }
   try {
+    // req.body ya viene filtrado por validate(actualizarSchema) — solo campos de reporte
     const updateOps = req.body;
 
-    const result = await prisma.equipo.update({
-      where: { id: id },
+    const result = await prisma.reporte.update({
+      where: { id },
       data: updateOps,
     });
 
     res.status(200).json({
-      message: 'Equipo Actualizado',
-      articulo: result,
+      message: 'Reporte actualizado',
+      reporte: result,
     });
   } catch (err) {
     console.error(err);

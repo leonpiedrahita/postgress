@@ -47,7 +47,8 @@ const guardarreporte = async (req, res, next) => {
     next();
 
   } catch (err) {
-    res.status(422).json({ error: err.message });
+    console.error('Error al subir archivo a S3:', err);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 const guardardocumentoequipo = async (req, res, next) => {
@@ -83,7 +84,8 @@ const guardardocumentoequipo = async (req, res, next) => {
     next();
 
   } catch (err) {
-    res.status(422).json({ error: err.message });
+    console.error('Error al subir archivo a S3:', err);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -120,7 +122,8 @@ const guardarsoporteservicio = async (req, res, next) => {
     next();
 
   } catch (err) {
-    res.status(422).json({ error: err.message });
+    console.error('Error al subir archivo a S3:', err);
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 // ✅ Descargar archivo desde S3
@@ -163,7 +166,7 @@ const buscar = async (req, res) => {
 
   } catch (err) {
     console.error("Error al buscar archivo:", err);
-    res.status(422).json({ error: err.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -190,7 +193,7 @@ const buscarurl = async (req, res) => {
     res.status(200).json({ message: "URL generada correctamente", url });
   } catch (err) {
     console.error("Error al generar URL firmada:", err);
-    res.status(422).json({ error: err.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 

@@ -264,11 +264,17 @@ exports.actualizarfirma = async (req, res) => {
   const id = parseInt(req.params.id, 10);
   if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'ID inválido' });
 
+  const { firma } = req.body;
+  // Firma en base64 (data URL de canvas): string no vacío con tamaño acotado (~500KB)
+  if (typeof firma !== 'string' || firma.length === 0 || firma.length > 700000) {
+    return res.status(400).json({ error: 'Campo firma inválido' });
+  }
+
   try {
     const prisma = await getUserPrisma(req);
     const usuarioActualizado = await prisma.usuario.update({
       where: { id },
-      data: { firma: req.body.firma },
+      data: { firma },
       select: { id: true, nombre: true, email: true },
     });
 
