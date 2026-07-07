@@ -25,7 +25,7 @@ exports.listarTodosLosIngresos = async (req, res) => {
     res.status(200).json(ingresos.length > 0 ? ingresos : []);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Ocurrió un error al listar los ingresos', detalles: err.message });
+    res.status(500).json({ error: 'Ocurrió un error al listar los ingresos' });
   }
 };
 
@@ -70,7 +70,7 @@ exports.listarIngresosAbiertos = async (req, res) => {
   } catch (err) {
     // 4. Manejo de errores
     console.error(err);
-    res.status(500).json({ error: 'Ocurrió un error al listar los ingresos abiertos', detalles: err.message });
+    res.status(500).json({ error: 'Ocurrió un error al listar los ingresos abiertos' });
   }
 };
 /**
@@ -80,6 +80,10 @@ exports.listarIngresosPorEstado = async (req, res) => {
   const prisma = req.prisma; // Obtener el cliente Prisma del request
   try {
     const { estado } = req.params; // Estado enviado como parámetro
+    const ESTADOS_VALIDOS = ['Abierto', 'Cerrado'];
+    if (!ESTADOS_VALIDOS.includes(estado)) {
+      return res.status(400).json({ error: 'Estado inválido' });
+    }
     const ingresos = await prisma.ingreso.findMany({
       where: { estado },
       include: {
@@ -90,7 +94,7 @@ exports.listarIngresosPorEstado = async (req, res) => {
     res.status(200).json(ingresos.length > 0 ? ingresos : []);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Ocurrió un error al listar los ingresos por estado', detalles: err.message });
+    res.status(500).json({ error: 'Ocurrió un error al listar los ingresos por estado' });
   }
 };
 
@@ -115,7 +119,7 @@ exports.listarIngresosPorSerieDeEquipo = async (req, res) => {
     res.status(200).json(ingresos.length > 0 ? ingresos : []);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Ocurrió un error al listar los ingresos por serie de equipo', detalles: err.message });
+    res.status(500).json({ error: 'Ocurrió un error al listar los ingresos por serie de equipo' });
   }
 };
 
@@ -149,7 +153,7 @@ exports.listarIngresosPorNombreDeCliente = async (req, res) => {
     res.status(200).json(ingresos.length > 0 ? ingresos : []);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Ocurrió un error al listar los ingresos por nombre de cliente', detalles: err.message });
+    res.status(500).json({ error: 'Ocurrió un error al listar los ingresos por nombre de cliente' });
   }
 };
 /**
@@ -193,7 +197,6 @@ exports.obtenerIngresoPorId = async (req, res) => {
     console.error(err);
     res.status(500).json({
       error: 'Ocurrió un error al obtener el ingreso.',
-      detalles: err.message,
     });
   }
 };
@@ -281,7 +284,7 @@ exports.registrarIngreso = async (req, res) => {
     }
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Ocurrió un error al registrar el ingreso.', detalles: err.message });
+    res.status(500).json({ error: 'Ocurrió un error al registrar el ingreso.' });
   }
 };
 
@@ -391,7 +394,7 @@ exports.agregarEtapa = async (req, res) => {
 
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Ocurrió un error al agregar la etapa.', detalles: err.message });
+    res.status(500).json({ error: 'Ocurrió un error al agregar la etapa.' });
   }
 };
 
@@ -455,7 +458,7 @@ exports.confirmarMovimiento = async (req, res) => {
 
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Ocurrió un error al confirmar el movimiento.', detalles: err.message });
+    res.status(500).json({ error: 'Ocurrió un error al confirmar el movimiento.' });
   }
 };
 
@@ -472,7 +475,7 @@ exports.contarMovimientosPendientes = async (req, res) => {
     res.status(200).json({ count });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Ocurrió un error al contar movimientos pendientes.', detalles: err.message });
+    res.status(500).json({ error: 'Ocurrió un error al contar movimientos pendientes.' });
   }
 };
 
@@ -506,7 +509,7 @@ exports.listarMovimientosPendientes = async (req, res) => {
     res.status(200).json(resultado);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Ocurrió un error al listar movimientos pendientes.', detalles: err.message });
+    res.status(500).json({ error: 'Ocurrió un error al listar movimientos pendientes.' });
   }
 };
 
@@ -525,7 +528,7 @@ exports.listarPorEquipo = async (req, res) => {
     res.status(200).json(ingresos);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Ocurrió un error al listar los ingresos del equipo.', detalles: err.message });
+    res.status(500).json({ error: 'Ocurrió un error al listar los ingresos del equipo.' });
   }
 };
 
@@ -549,6 +552,6 @@ exports.cerrar = async (req, res) => {
     res.status(200).json({ message: 'Ingreso cerrado correctamente.', ingreso: actualizado });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Ocurrió un error al cerrar el ingreso.', detalles: err.message });
+    res.status(500).json({ error: 'Ocurrió un error al cerrar el ingreso.' });
   }
 };

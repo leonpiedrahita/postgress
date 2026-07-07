@@ -16,15 +16,16 @@ exports.guardar = async (req, res) => {
     let borrador;
 
     if (id) {
-      // Verificar que el borrador pertenece al usuario antes de actualizar
-      const existente = await prisma.borrador.findUnique({ where: { id: parseInt(id) } });
-      if (!existente || existente.usuarioId !== usuarioId) {
-        return res.status(403).json({ message: 'No autorizado para modificar este borrador' });
-      }
-      borrador = await prisma.borrador.update({
-        where: { id: parseInt(id) },
+      // updateMany con filtro de usuarioId hace la verificación de propiedad
+      // y la actualización en una sola operación atómica (evita TOCTOU)
+      const resultado = await prisma.borrador.updateMany({
+        where: { id: parseInt(id), usuarioId },
         data: { datos },
       });
+      if (resultado.count === 0) {
+        return res.status(403).json({ message: 'No autorizado para modificar este borrador' });
+      }
+      borrador = await prisma.borrador.findUnique({ where: { id: parseInt(id) } });
     } else {
       borrador = await prisma.borrador.create({
         data: { usuarioId, equipoId: parseInt(equipoId), datos },
@@ -34,7 +35,7 @@ exports.guardar = async (req, res) => {
     res.status(200).json({ message: 'Borrador guardado', borrador });
   } catch (err) {
     console.error('Error al guardar borrador:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -63,7 +64,7 @@ exports.listar = async (req, res) => {
     res.status(200).json(borradores);
   } catch (err) {
     console.error('Error al listar borradores:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -99,7 +100,7 @@ exports.obtener = async (req, res) => {
     res.status(200).json(borrador);
   } catch (err) {
     console.error('Error al obtener borrador:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -127,6 +128,6 @@ exports.eliminar = async (req, res) => {
     res.status(200).json({ message: 'Borrador eliminado' });
   } catch (err) {
     console.error('Error al eliminar borrador:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };

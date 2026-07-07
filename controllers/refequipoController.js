@@ -14,7 +14,7 @@ exports.listar = async (req, res) => {
     res.status(200).json(equipos);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Ocurrió un error al listar los equipos.', detalles: err.message });
+    res.status(500).json({ error: 'Ocurrió un error al listar los equipos.' });
   }
 };
 
@@ -37,7 +37,7 @@ exports.listaruno = async (req, res) => {
     res.status(200).json(equipo);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 // Registrar un nuevo equipo
@@ -88,21 +88,37 @@ exports.registrar = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({
-      error: err,
+      error: 'Error interno del servidor',
     });
   }
 };
+
+// Campos permitidos para crear/actualizar una referencia de equipo (whitelist anti mass-assignment)
+const CAMPOS_REFEQUIPO = [
+  'nombre', 'marca', 'fabricante', 'servicio', 'clasificacionriesgo',
+  'periodicidadmantenimiento', 'alto', 'ancho', 'profundo', 'peso',
+  'voltaje', 'corriente', 'potencia', 'principiodemedicion', 'pruebasporhora',
+  'temperatura', 'humedad', 'agua', 'desague', 'recomendaciones',
+];
 
 // Actualizar un equipo
 exports.actualizar = async (req, res) => {
   const prisma = req.prisma; // Obtener el cliente Prisma del request
   try {
-    const id = parseInt(req.params.id);
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: 'ID inválido' });
+    }
 
-    // Actualizar equipo con los campos enviados en el cuerpo de la solicitud
+    // Solo se actualizan los campos de la whitelist enviados en el cuerpo
+    const data = {};
+    for (const campo of CAMPOS_REFEQUIPO) {
+      if (req.body[campo] !== undefined) data[campo] = req.body[campo];
+    }
+
     const equipoActualizado = await prisma.refEquipo.update({
       where: { id },
-      data: req.body, // Actualiza dinámicamente los campos enviados
+      data,
     });
 
     res.status(200).json({
@@ -112,7 +128,7 @@ exports.actualizar = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({
-      error: err,
+      error: 'Error interno del servidor',
     });
   }
 };
@@ -134,6 +150,6 @@ exports.registrardocumento = async (req, res) => {
     res.status(201).json({ message: 'Documento registrado' });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };

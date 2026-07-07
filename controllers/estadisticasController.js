@@ -41,6 +41,6 @@ exports.resumen = async (req, res) => {
     });
   } catch (err) {
     console.error('[Estadísticas] Error en resumen:', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };

@@ -18,7 +18,7 @@ exports.listar = async (req, res) => {
     res.status(200).json(clientes);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err.message || err });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -78,7 +78,7 @@ exports.registrar = async (req, res) => {
     res.status(201).json({ message: 'Cliente creado', cliente: clienteActualizado });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err.message || err });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -142,7 +142,7 @@ exports.actualizar = async (req, res) => {
     res.status(200).json({ message: 'Cliente actualizado', cliente: clienteActualizado });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err.message || err });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 exports.agregarsede = async (req, res) => {
@@ -172,7 +172,7 @@ exports.agregarsede = async (req, res) => {
     res.status(201).json({ message: 'Sede agregada', sede: nuevaSede });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err.message || err });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 exports.listaruno = async (req, res) => {
@@ -192,7 +192,7 @@ exports.listaruno = async (req, res) => {
     res.status(200).json(cliente);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err.message || err });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -216,7 +216,7 @@ exports.actualizarsede = async (req, res) => {
     res.status(200).json({ message: 'Sede actualizada', sede: sedeActualizada });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err.message || err });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -243,7 +243,7 @@ exports.eliminarsede = async (req, res) => {
     res.status(200).json({ message: 'Sede desactivada', sede: sedeActualizada });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err.message || err });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 

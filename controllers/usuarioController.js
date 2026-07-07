@@ -158,7 +158,7 @@ exports.ingresar = async (req, res, next) => {
     });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
     next(err);
   }
 };
@@ -204,7 +204,7 @@ exports.refresh = async (req, res) => {
     res.status(200).json({ accessToken, refreshToken: newRefreshToken });
   } catch (err) {
     console.error('Error en refresh:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -227,7 +227,7 @@ exports.salir = async (req, res) => {
     res.status(200).json({ message: 'Sesión cerrada' });
   } catch (err) {
     console.error('Error al cerrar sesión:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -261,8 +261,8 @@ exports.actualizar = async (req, res, next) => {
 };
 
 exports.actualizarfirma = async (req, res) => {
-  const id = parseInt(req.params.id);
-  if (!id) return res.status(400).json({ error: 'ID de usuario requerido' });
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ error: 'ID inválido' });
 
   try {
     const prisma = await getUserPrisma(req);
@@ -278,7 +278,7 @@ exports.actualizarfirma = async (req, res) => {
     });
   } catch (err) {
     console.error('Error al actualizar la firma:', err.message);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -309,7 +309,7 @@ exports.buscarfirma = async (req, res) => {
   } catch (err) {
     console.error('Error al buscar la firma:', err.message);
     res.status(500).json({
-      error: err.message,
+      error: 'Error interno del servidor',
     });
   }
 };
@@ -334,6 +334,6 @@ exports.cambiarContrasena = async (req, res) => {
 
     res.status(200).json({ message: 'Contraseña actualizada correctamente' });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };

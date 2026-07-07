@@ -32,7 +32,7 @@ exports.listar = async (req, res) => {
     res.status(200).json(equipos);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -87,7 +87,7 @@ exports.registrar = async (req, res) => {
     res.status(201).json({ message: 'Equipo creado', equipo: nuevoEquipo });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -170,7 +170,7 @@ exports.actualizar = async (req, res) => {
 
   } catch (err) {
     console.error("Error al actualizar el equipo:", err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -220,7 +220,7 @@ exports.actualizarEstado = async (req, res) => {
 
   } catch (err) {
     console.error("Error al actualizar el estado del equipo:", err);
-    res.status(500).json({ error: err.message || "Ocurrió un error en el servidor." });
+    res.status(500).json({ error: "Ocurrió un error en el servidor." });
   }
 };
 
@@ -247,7 +247,7 @@ exports.registrarreporte = async (req, res) => {
     res.status(201).json({ message: 'Reporte registrado', identificacion: req.idcreada });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -275,7 +275,7 @@ exports.registrarreporteexterno = async (req, res) => {
     res.status(201).json({ message: 'Reporte externo registrado' });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -300,7 +300,7 @@ exports.registrardocumento = async (req, res) => {
     res.status(201).json({ message: 'Documento registrado' });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -329,7 +329,7 @@ exports.eliminarDocumentoLegal = async (req, res) => {
     res.status(200).json({ message: 'Documento eliminado correctamente.' });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -347,7 +347,7 @@ exports.buscar = async (req, res) => {
     res.status(200).json(equipos);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -393,7 +393,7 @@ exports.listaruno = async (req, res) => {
     res.status(200).json(equipo);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 // Buscar equipos con texto libre y paginación del servidor
@@ -486,7 +486,7 @@ exports.buscarequipos = async (req, res) => {
     res.status(200).json({ equipos, total });
   } catch (err) {
     console.error('Error al buscar equipos:', err);
-    res.status(500).json({ error: 'Ocurrió un error al buscar los equipos.', detalles: err.message });
+    res.status(500).json({ error: 'Ocurrió un error al buscar los equipos.' });
   }
 };
 
@@ -516,7 +516,7 @@ exports.listarTodos = async (req, res) => {
     res.status(200).json(equipos);
   } catch (err) {
     console.error('Error al listar todos los equipos:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 // Registrar un reporte externo
@@ -550,7 +550,7 @@ exports.listarAuditLog = async (req, res) => {
     res.status(200).json(logs);
   } catch (err) {
     console.error('Error al obtener audit log:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -577,7 +577,7 @@ exports.actualizarAtencion = async (req, res) => {
       return res.status(404).json({ error: `Equipo con ID ${req.params.id} no encontrado.` });
     }
     console.error("Error al actualizar atención:", err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -674,7 +674,7 @@ exports.importarAtencion = async (req, res) => {
     });
   } catch (err) {
     console.error('Error al importar atención:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -732,7 +732,7 @@ exports.importarAsesor = async (req, res) => {
     });
   } catch (err) {
     console.error('Error al importar asesores:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -748,7 +748,7 @@ exports.listarHistorialEstado = async (req, res) => {
     res.status(200).json(historial);
   } catch (err) {
     console.error('Error al obtener historial de estados:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -777,6 +777,6 @@ exports.listarPreventivos = async (req, res) => {
     res.status(200).json(equipos);
   } catch (err) {
     console.error('Error al listar preventivos:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };

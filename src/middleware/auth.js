@@ -8,7 +8,7 @@ const verificarRol = (rolesPermitidos) => {
       : req.headers.token;
 
     if (!token) {
-      return res.status(404).send({ message: 'Token no encontrado' });
+      return res.status(401).send({ message: 'Token no encontrado' });
     }
 
     const validationResponse = await tokenServices.decode(token);

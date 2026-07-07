@@ -10,7 +10,7 @@ exports.obtenerNovedades = async (_req, res) => {
     res.status(200).json({ habilitado: registro ? registro.habilitado : false });
   } catch (err) {
     console.error('Error al obtener config de novedades:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -23,7 +23,7 @@ exports.obtenerConfiguracion = async (req, res) => {
     res.status(200).json(filas);
   } catch (err) {
     console.error('Error al obtener configuración de notificaciones:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -45,7 +45,7 @@ exports.guardarConfiguracionBulk = async (req, res) => {
     res.status(200).json({ message: 'Configuración guardada', total: cambios.length });
   } catch (err) {
     console.error('Error al guardar configuración bulk:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -63,7 +63,7 @@ exports.actualizarConfiguracion = async (req, res) => {
     res.status(200).json({ message: 'Configuración actualizada' });
   } catch (err) {
     console.error('Error al actualizar configuración de notificaciones:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -76,7 +76,7 @@ exports.obtenerGlobal = async (req, res) => {
     res.status(200).json({ habilitado: registro ? registro.habilitado : true });
   } catch (err) {
     console.error('Error al obtener toggle global:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -94,6 +94,6 @@ exports.actualizarGlobal = async (req, res) => {
     res.status(200).json({ message: 'Toggle global actualizado', habilitado });
   } catch (err) {
     console.error('Error al actualizar toggle global:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };

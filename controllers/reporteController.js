@@ -8,7 +8,7 @@ exports.listar = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({
-      error: err.message,
+      error: 'Error interno del servidor',
     });
   }
 };
@@ -30,7 +30,7 @@ exports.listaruno = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({
-      error: err.message,
+      error: 'Error interno del servidor',
     });
   }
 };
@@ -84,7 +84,7 @@ exports.registrar = async (req, res,next) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({
-      error: err.message,
+      error: 'Error interno del servidor',
     });
   }
 };
@@ -121,7 +121,7 @@ exports.registrarexterno = async (req, res, next) => {
     next(); // Continuar con el siguiente middleware
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
@@ -143,7 +143,7 @@ exports.actualizar = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).json({
-      error: err.message,
+      error: 'Error interno del servidor',
     });
   }
 };
@@ -163,7 +163,7 @@ exports.listarPorEquipo = async (req, res) => {
     res.status(200).json(historial);
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
