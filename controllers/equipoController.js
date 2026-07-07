@@ -1,34 +1,53 @@
 const tokenServices = require('../services/token'); // Importa el servicio de tokens
+const { parsePaginacion } = require('../src/utils/paginacion');
 
-// Listar todos los equipos
+// Listar todos los equipos.
+// Soporta paginación opcional con ?page=1&limit=50 (responde { data, total, page, limit }).
 exports.listar = async (req, res) => {
   const prisma = req.prisma;
-  try {
-    const equipos = await prisma.equipo.findMany({
-      where: {
-        estado: {
-          not: 'Inactivo', //  Aquí se excluye el estado 'Inactivo'
-        },
-      },
-      include: {
-        propietario: true, // Incluye información del propietario
-        cliente: true, // Incluye información del cliente
-        proveedor: true, // Incluye información del proveedor 
-        referencia: true, // Incluye información de la referencia
-        historialDeServicios: true, // Incluye el historial de servicios
-        documentosLegales: { where: { eliminado: false } }, // Excluye documentos eliminados (soft delete)
-        historialPropietarios: {
-          include: {
-            cliente: true, // Incluye información del cliente en el historial
-            propietario: true, // Incluye información del propietario en el historial
-            proveedor: true, // Incluye información del proveedor en el historial 
-            /* responsable: true, // Incluye información del responsable en el historial */
-            // Incluye información del tipo de contrato en el historial
-          },
-        },
 
-      }
-    });
+  const paginacion = parsePaginacion(req.query);
+  if (paginacion?.error) {
+    return res.status(400).json({ error: 'Parámetros de paginación inválidos' });
+  }
+
+  const where = {
+    estado: {
+      not: 'Inactivo', //  Aquí se excluye el estado 'Inactivo'
+    },
+  };
+  const include = {
+    propietario: true, // Incluye información del propietario
+    cliente: true, // Incluye información del cliente
+    proveedor: true, // Incluye información del proveedor
+    referencia: true, // Incluye información de la referencia
+    historialDeServicios: true, // Incluye el historial de servicios
+    documentosLegales: { where: { eliminado: false } }, // Excluye documentos eliminados (soft delete)
+    historialPropietarios: {
+      include: {
+        cliente: true, // Incluye información del cliente en el historial
+        propietario: true, // Incluye información del propietario en el historial
+        proveedor: true, // Incluye información del proveedor en el historial
+      },
+    },
+  };
+
+  try {
+    if (paginacion) {
+      const [data, total] = await Promise.all([
+        prisma.equipo.findMany({
+          where,
+          include,
+          orderBy: { id: 'desc' },
+          skip: paginacion.skip,
+          take: paginacion.take,
+        }),
+        prisma.equipo.count({ where }),
+      ]);
+      return res.status(200).json({ data, total, page: paginacion.page, limit: paginacion.limit });
+    }
+
+    const equipos = await prisma.equipo.findMany({ where, include });
     res.status(200).json(equipos);
   } catch (err) {
     console.error(err);

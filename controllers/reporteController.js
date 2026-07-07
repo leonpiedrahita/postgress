@@ -1,8 +1,29 @@
 
 
+const { parsePaginacion } = require('../src/utils/paginacion');
+
+// Soporta paginación opcional con ?page=1&limit=50 (responde { data, total, page, limit }).
 exports.listar = async (req, res) => {
   const prisma = req.prisma;
+
+  const paginacion = parsePaginacion(req.query);
+  if (paginacion?.error) {
+    return res.status(400).json({ error: 'Parámetros de paginación inválidos' });
+  }
+
   try {
+    if (paginacion) {
+      const [data, total] = await Promise.all([
+        prisma.reporte.findMany({
+          orderBy: { id: 'desc' },
+          skip: paginacion.skip,
+          take: paginacion.take,
+        }),
+        prisma.reporte.count(),
+      ]);
+      return res.status(200).json({ data, total, page: paginacion.page, limit: paginacion.limit });
+    }
+
     const reportes = await prisma.reporte.findMany();
     res.status(200).json(reportes);
   } catch (err) {

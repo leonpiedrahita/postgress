@@ -1,27 +1,49 @@
 
 
+const { parsePaginacion } = require('../src/utils/paginacion');
+
 /**
- * Listar todos los ingresos
+ * Listar todos los ingresos.
+ * Soporta paginación opcional con ?page=1&limit=50 (responde { data, total, page, limit }).
  */
 exports.listarTodosLosIngresos = async (req, res) => {
   const prisma = req.prisma; // Obtener el cliente Prisma del request
-  try {
-    const ingresos = await prisma.ingreso.findMany({
+
+  const paginacion = parsePaginacion(req.query);
+  if (paginacion?.error) {
+    return res.status(400).json({ error: 'Parámetros de paginación inválidos' });
+  }
+
+  const include = {
+    equipo: {
       include: {
-        equipo: {
-          include: {
-            cliente: true,
-            propietario: true,
-            proveedor: true,
-            historialPropietarios: {
-              include: { propietario: true, cliente: true, proveedor: true },
-              orderBy: { fecha: 'desc' },
-            },
-          },
+        cliente: true,
+        propietario: true,
+        proveedor: true,
+        historialPropietarios: {
+          include: { propietario: true, cliente: true, proveedor: true },
+          orderBy: { fecha: 'desc' },
         },
-        etapas: { orderBy: { id: 'asc' } },
       },
-    });
+    },
+    etapas: { orderBy: { id: 'asc' } },
+  };
+
+  try {
+    if (paginacion) {
+      const [data, total] = await Promise.all([
+        prisma.ingreso.findMany({
+          include,
+          orderBy: { id: 'desc' },
+          skip: paginacion.skip,
+          take: paginacion.take,
+        }),
+        prisma.ingreso.count(),
+      ]);
+      return res.status(200).json({ data, total, page: paginacion.page, limit: paginacion.limit });
+    }
+
+    const ingresos = await prisma.ingreso.findMany({ include });
     res.status(200).json(ingresos.length > 0 ? ingresos : []);
   } catch (err) {
     console.error(err);

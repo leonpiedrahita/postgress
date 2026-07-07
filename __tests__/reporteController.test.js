@@ -65,6 +65,43 @@ describe('listar', () => {
     await reporteController.listar(mockReq(), res);
     expect(res.status).toHaveBeenCalledWith(500);
   });
+
+  // ─── Paginación opcional ────────────────────────────────────────────────────
+  it('con ?page&limit responde { data, total, page, limit } y usa skip/take', async () => {
+    const pagina = [{ id: 10 }, { id: 9 }];
+    mockReporte.findMany.mockResolvedValue(pagina);
+    mockReporte.count.mockResolvedValue(42);
+
+    const res = mockRes();
+    await reporteController.listar(mockReq({ query: { page: '2', limit: '2' } }), res);
+
+    expect(mockReporte.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ skip: 2, take: 2, orderBy: { id: 'desc' } })
+    );
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ data: pagina, total: 42, page: 2, limit: 2 });
+  });
+
+  it('sin query params mantiene la respuesta como array plano (compatibilidad)', async () => {
+    const reportes = [{ id: 1 }];
+    mockReporte.findMany.mockResolvedValue(reportes);
+
+    const res = mockRes();
+    await reporteController.listar(mockReq({ query: {} }), res);
+
+    expect(mockReporte.findMany).toHaveBeenCalledWith();
+    expect(res.json).toHaveBeenCalledWith(reportes);
+  });
+
+  ['abc', '0', '-1', '201'].forEach(limit => {
+    it(`retorna 400 con limit inválido "${limit}" sin tocar la BD`, async () => {
+      const res = mockRes();
+      await reporteController.listar(mockReq({ query: { limit } }), res);
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ error: 'Parámetros de paginación inválidos' });
+      expect(mockReporte.findMany).not.toHaveBeenCalled();
+    });
+  });
 });
 
 // ─── registrar ────────────────────────────────────────────────────────────────
