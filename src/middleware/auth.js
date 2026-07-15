@@ -17,6 +17,11 @@ const verificarRol = (rolesPermitidos) => {
       return res.status(403).send({ message: 'Token vencido' });
     }
 
+    // Token inválido (firma incorrecta) o usuario inexistente/inactivo
+    if (!validationResponse) {
+      return res.status(401).send({ message: 'Token inválido' });
+    }
+
     if (!rolesPermitidos.includes(validationResponse.rol)) {
       return res.status(403).send({ message: 'No autorizado' });
     }
