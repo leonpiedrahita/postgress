@@ -173,18 +173,20 @@ exports.refresh = async (req, res) => {
   try {
     const tokenHash = tokenServices.hashRefreshToken(refreshToken);
 
-    // Búsqueda directa por hash — O(1); rechaza tokens expirados o agotados
+    // Búsqueda directa por hash — O(1); rechaza tokens expirados. La seguridad
+    // la da la rotación: al sobrescribir el hash, un refresh token viejo (o robado)
+    // deja de ser válido. No se limita el número total de refresh por sesión: con
+    // el access token en memoria, cada recarga (F5) hace un refresh legítimo.
     const usuarioValido = await prismaPublico.usuario.findFirst({
       where: {
         estado: 1,
         refreshToken: tokenHash,
         refreshTokenExp: { gt: new Date() },
-        refreshTokenCount: { lt: 2 },
       },
     });
 
     if (!usuarioValido) {
-      return res.status(401).json({ message: 'Refresh token inválido, expirado o límite de renovaciones alcanzado' });
+      return res.status(401).json({ message: 'Refresh token inválido o expirado' });
     }
 
     // Rotación: genera un nuevo refresh token e invalida el anterior al sobrescribir el hash
@@ -197,7 +199,7 @@ exports.refresh = async (req, res) => {
       data: {
         refreshToken: tokenServices.hashRefreshToken(newRefreshToken),
         refreshTokenExp: nuevaExp,
-        refreshTokenCount: { increment: 1 },
+        refreshTokenCount: 0,
       },
     });
 

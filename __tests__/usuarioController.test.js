@@ -111,11 +111,12 @@ describe('refresh', () => {
     await usuarioController.refresh(mockReq({ body: { refreshToken: 'viejo-uuid' } }), res);
 
     expect(mockPrismaBase.usuario.findFirst).toHaveBeenCalledWith(
-      expect.objectContaining({ where: expect.objectContaining({ refreshToken: 'hash-viejo', refreshTokenCount: { lt: 2 } }) })
+      expect.objectContaining({ where: expect.objectContaining({ refreshToken: 'hash-viejo' }) })
     );
-    // El hash nuevo se almacena en BD (token anterior queda inválido)
+    // El hash nuevo se almacena en BD (token anterior queda inválido) y el
+    // contador se reinicia en cada rotación para no limitar recargas legítimas.
     expect(mockPrismaBase.usuario.update).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ refreshToken: 'hash-nuevo' }) })
+      expect.objectContaining({ data: expect.objectContaining({ refreshToken: 'hash-nuevo', refreshTokenCount: 0 }) })
     );
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({ accessToken: 'nuevo-jwt', refreshToken: 'nuevo-uuid' });
@@ -137,13 +138,13 @@ describe('refresh', () => {
     expect(res.status).toHaveBeenCalledWith(401);
   });
 
-  it('retorna 401 si el refreshTokenCount ya alcanzó el límite (token reutilizado ≥ 2 veces)', async () => {
+  it('retorna 401 si el refresh token está expirado (no hay match por refreshTokenExp) sin rotar', async () => {
     tokenServices.hashRefreshToken = jest.fn().mockReturnValue('sha256-hash');
-    // findFirst devuelve null porque la query incluye refreshTokenCount: { lt: 2 } y no hay match
+    // findFirst devuelve null porque la query filtra refreshTokenExp > now y no hay match
     mockPrismaBase.usuario.findFirst.mockResolvedValue(null);
 
     const res = mockRes();
-    await usuarioController.refresh(mockReq({ body: { refreshToken: 'token-agotado' } }), res);
+    await usuarioController.refresh(mockReq({ body: { refreshToken: 'token-expirado' } }), res);
     expect(res.status).toHaveBeenCalledWith(401);
     expect(mockPrismaBase.usuario.update).not.toHaveBeenCalled();
   });
