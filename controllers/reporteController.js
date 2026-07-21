@@ -36,8 +36,9 @@ exports.listar = async (req, res) => {
 
 exports.listaruno = async (req, res) => {
   const prisma = req.prisma;
-  const id = parseInt(req.params.id, 10);
-  if (!Number.isInteger(id) || id <= 0) {
+  // El id de Reporte es un CUID (string), no un entero.
+  const id = req.params.id;
+  if (typeof id !== 'string' || !/^[a-z0-9-]{10,40}$/i.test(id)) {
     return res.status(400).json({ error: 'ID inválido' });
   }
   try {
@@ -150,8 +151,9 @@ exports.registrarexterno = async (req, res, next) => {
 
 exports.actualizar = async (req, res) => {
   const prisma = req.prisma;
-  const id = parseInt(req.params.id, 10);
-  if (!Number.isInteger(id) || id <= 0) {
+  // El id de Reporte es un CUID (string), no un entero.
+  const id = req.params.id;
+  if (typeof id !== 'string' || !/^[a-z0-9-]{10,40}$/i.test(id)) {
     return res.status(400).json({ error: 'ID inválido' });
   }
   try {

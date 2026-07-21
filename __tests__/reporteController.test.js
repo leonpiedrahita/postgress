@@ -316,14 +316,16 @@ describe('registrarexterno', () => {
 
 // ─── listaruno ────────────────────────────────────────────────────────────────
 describe('listaruno', () => {
-  it('retorna 200 con el reporte y convierte el id a número', async () => {
-    const reporte = { id: 5, tipodeasistencia: 'Preventivo' };
+  const ID_CUID = 'cmqrf97se0000k94gnkdh96t4';
+
+  it('retorna 200 con el reporte usando el id (CUID) directamente', async () => {
+    const reporte = { id: ID_CUID, tipodeasistencia: 'Preventivo' };
     mockReporte.findUnique.mockResolvedValue(reporte);
 
     const res = mockRes();
-    await reporteController.listaruno(mockReq({ params: { id: '5' } }), res);
+    await reporteController.listaruno(mockReq({ params: { id: ID_CUID } }), res);
 
-    expect(mockReporte.findUnique).toHaveBeenCalledWith({ where: { id: 5 } });
+    expect(mockReporte.findUnique).toHaveBeenCalledWith({ where: { id: ID_CUID } });
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(reporte);
   });
@@ -331,12 +333,12 @@ describe('listaruno', () => {
   it('retorna 404 si el reporte no existe', async () => {
     mockReporte.findUnique.mockResolvedValue(null);
     const res = mockRes();
-    await reporteController.listaruno(mockReq({ params: { id: '999' } }), res);
+    await reporteController.listaruno(mockReq({ params: { id: ID_CUID } }), res);
     expect(res.status).toHaveBeenCalledWith(404);
     expect(res.json).toHaveBeenCalledWith({ error: 'Reporte no encontrado' });
   });
 
-  ['abc', '0', '-1'].forEach(id => {
+  ['abc', '0', '-1', '', 'id con espacios', 'a'.repeat(50)].forEach(id => {
     it(`retorna 400 con id inválido "${id}" sin tocar la BD`, async () => {
       const res = mockRes();
       await reporteController.listaruno(mockReq({ params: { id } }), res);
@@ -349,7 +351,7 @@ describe('listaruno', () => {
   it('retorna 500 si Prisma lanza error', async () => {
     mockReporte.findUnique.mockRejectedValue(new Error('DB error'));
     const res = mockRes();
-    await reporteController.listaruno(mockReq({ params: { id: '1' } }), res);
+    await reporteController.listaruno(mockReq({ params: { id: ID_CUID } }), res);
     expect(res.status).toHaveBeenCalledWith(500);
     expect(res.json).toHaveBeenCalledWith({ error: 'Error interno del servidor' });
   });
@@ -357,25 +359,27 @@ describe('listaruno', () => {
 
 // ─── actualizar ───────────────────────────────────────────────────────────────
 describe('actualizar', () => {
-  it('actualiza el modelo REPORTE (no equipo) con id numérico', async () => {
-    const actualizado = { id: 3, observaciones: 'Editado' };
+  const ID_CUID = 'cmqrf97se0000k94gnkdh96t4';
+
+  it('actualiza el modelo REPORTE (no equipo) con id CUID', async () => {
+    const actualizado = { id: ID_CUID, observaciones: 'Editado' };
     mockReporte.update.mockResolvedValue(actualizado);
 
     const res = mockRes();
     await reporteController.actualizar(
-      mockReq({ params: { id: '3' }, body: { observaciones: 'Editado' } }),
+      mockReq({ params: { id: ID_CUID }, body: { observaciones: 'Editado' } }),
       res
     );
 
     expect(mockReporte.update).toHaveBeenCalledWith({
-      where: { id: 3 },
+      where: { id: ID_CUID },
       data: { observaciones: 'Editado' },
     });
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith({ message: 'Reporte actualizado', reporte: actualizado });
   });
 
-  ['abc', '0', '-1'].forEach(id => {
+  ['abc', '0', '-1', '', 'id con espacios', 'a'.repeat(50)].forEach(id => {
     it(`retorna 400 con id inválido "${id}" sin tocar la BD`, async () => {
       const res = mockRes();
       await reporteController.actualizar(mockReq({ params: { id }, body: {} }), res);
@@ -389,7 +393,7 @@ describe('actualizar', () => {
     mockReporte.update.mockRejectedValue(new Error('DB error'));
     const res = mockRes();
     await reporteController.actualizar(
-      mockReq({ params: { id: '3' }, body: { observaciones: 'X' } }),
+      mockReq({ params: { id: ID_CUID }, body: { observaciones: 'X' } }),
       res
     );
     expect(res.status).toHaveBeenCalledWith(500);
