@@ -5,6 +5,10 @@ const prisma = getPrismaWithUser('sistema');
 
 const WA_URL = `https://graph.facebook.com/${process.env.WHATSAPP_VERSION}/${process.env.WHATSAPP_PHONE_ID}/messages`;
 
+// Roles cuyas notificaciones se filtran por asesor: solo se avisa al usuario si
+// está asignado como asesor del equipo (evita avisarle sobre equipos ajenos).
+const ROLES_FILTRADOS_POR_ASESOR = ['comercial', 'Dir. Comercial'];
+
 
 /**
  * Obtiene los roles habilitados para un tipo de notificación desde la BD.
@@ -43,9 +47,10 @@ async function getRolesHabilitados(tipo) {
 
 /**
  * Resuelve los usuarios a notificar a partir de los roles habilitados: los
- * roles no-comerciales se notifican completos, pero el rol 'comercial' solo
- * se notifica si está asignado como asesor del equipo en cuestión (evita
- * avisarle a comerciales sobre equipos de clientes que no son suyos).
+ * roles normales se notifican completos, pero los roles filtrados por asesor
+ * (ver ROLES_FILTRADOS_POR_ASESOR) solo se notifican si el usuario está
+ * asignado como asesor del equipo en cuestión (evita avisarle sobre equipos
+ * de clientes que no son suyos).
  * @param {string[]} rolesHabilitados
  * @param {string|null|undefined} asesor - equipo.asesor
  * @param {{nombre: boolean}} [select] - campos a seleccionar (siempre incluye telefono)
@@ -53,7 +58,8 @@ async function getRolesHabilitados(tipo) {
  */
 async function usuariosParaNotificar(rolesHabilitados, asesor, select = {}) {
   const camposSelect = { ...select, telefono: true };
-  const otrosRoles = rolesHabilitados.filter(r => r !== 'comercial');
+  const rolesAsesor = rolesHabilitados.filter(r => ROLES_FILTRADOS_POR_ASESOR.includes(r));
+  const otrosRoles = rolesHabilitados.filter(r => !ROLES_FILTRADOS_POR_ASESOR.includes(r));
 
   const [usuariosOtros, usuariosComercial] = await Promise.all([
     otrosRoles.length
@@ -62,9 +68,9 @@ async function usuariosParaNotificar(rolesHabilitados, asesor, select = {}) {
           select: camposSelect,
         })
       : Promise.resolve([]),
-    rolesHabilitados.includes('comercial') && asesor
+    rolesAsesor.length && asesor
       ? prisma.usuario.findMany({
-          where: { rol: 'comercial', estado: 1, telefono: { not: null }, nombre: asesor },
+          where: { rol: { in: rolesAsesor }, estado: 1, telefono: { not: null }, nombre: asesor },
           select: camposSelect,
         })
       : Promise.resolve([]),
@@ -283,8 +289,9 @@ async function notificarCambioEtapa(ingresoId, datosEtapa) {
     const ESTADOS_DISPONIBLE = ['Disponible', 'Disponible Pdte. MP.'];
 
     let usuarios;
-    if (roles.includes('comercial')) {
-      const otrosRoles = roles.filter(r => r !== 'comercial');
+    const rolesAsesor = roles.filter(r => ROLES_FILTRADOS_POR_ASESOR.includes(r));
+    if (rolesAsesor.length) {
+      const otrosRoles = roles.filter(r => !ROLES_FILTRADOS_POR_ASESOR.includes(r));
       const [usuariosOtros, usuariosComercial] = await Promise.all([
         otrosRoles.length
           ? prisma.usuario.findMany({
@@ -294,12 +301,12 @@ async function notificarCambioEtapa(ingresoId, datosEtapa) {
           : Promise.resolve([]),
         ESTADOS_DISPONIBLE.includes(estadoEquipo)
           ? prisma.usuario.findMany({
-              where: { rol: 'comercial', estado: 1, telefono: { not: null } },
+              where: { rol: { in: rolesAsesor }, estado: 1, telefono: { not: null } },
               select: { telefono: true },
             })
           : equipo.asesor
             ? prisma.usuario.findMany({
-                where: { rol: 'comercial', estado: 1, telefono: { not: null }, nombre: equipo.asesor },
+                where: { rol: { in: rolesAsesor }, estado: 1, telefono: { not: null }, nombre: equipo.asesor },
                 select: { telefono: true },
               })
             : Promise.resolve([]),

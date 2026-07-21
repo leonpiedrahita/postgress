@@ -193,7 +193,28 @@ describe('notificarIngresoEquipo', () => {
 
     await notificarIngresoEquipo(1);
 
-    const callArg = mockPrismaInstance.usuario.findMany.mock.calls.find(c => c[0].where.rol === 'comercial')[0];
+    const callArg = mockPrismaInstance.usuario.findMany.mock.calls.find(c => c[0].where.rol?.in?.includes('comercial'))[0];
+    expect(callArg.where.nombre).toBe('Ana López');
+    expect(axios.post).toHaveBeenCalledTimes(1);
+    expect(axios.post.mock.calls[0][1].to).toBe('+573001111111');
+  });
+
+  // 'Dir. Comercial' comparte el filtrado por asesor de 'comercial': solo se le
+  // notifica si está asignado como asesor del equipo.
+  it('filtra Dir. Comercial por asesor igual que comercial', async () => {
+    mockCfgNotif.findMany.mockResolvedValue([{ rol: 'Dir. Comercial' }]);
+    mockPrismaInstance.ingreso.findUnique.mockResolvedValue({
+      ...ingresoMock,
+      equipo: { ...ingresoMock.equipo, asesor: 'Ana López' },
+    });
+    mockPrismaInstance.usuario.findMany.mockResolvedValue([
+      { nombre: 'Ana López', telefono: '+573001111111' },
+    ]);
+    axios.post.mockResolvedValue({ data: {} });
+
+    await notificarIngresoEquipo(1);
+
+    const callArg = mockPrismaInstance.usuario.findMany.mock.calls.find(c => c[0].where.rol?.in?.includes('Dir. Comercial'))[0];
     expect(callArg.where.nombre).toBe('Ana López');
     expect(axios.post).toHaveBeenCalledTimes(1);
     expect(axios.post.mock.calls[0][1].to).toBe('+573001111111');
@@ -454,7 +475,7 @@ describe('notificarCambioEtapa — lógica comercial', () => {
     const llamadasFindMany = mockPrismaInstance.usuario.findMany.mock.calls;
     const llamadaAsesor = llamadasFindMany[1][0];
     expect(llamadaAsesor.where.nombre).toBe('María Gómez');
-    expect(llamadaAsesor.where.rol).toBe('comercial');
+    expect(llamadaAsesor.where.rol).toEqual({ in: ['comercial'] });
   });
 
   it('no envía a ningún comercial si el equipo no tiene asesor asignado', async () => {
@@ -541,7 +562,7 @@ describe('notificarConfirmacionMovimiento', () => {
 
     await notificarConfirmacionMovimiento(1, 7, { confirmadoPor: 'Ana López' });
 
-    const callArg = mockPrismaInstance.usuario.findMany.mock.calls.find(c => c[0].where.rol === 'comercial')[0];
+    const callArg = mockPrismaInstance.usuario.findMany.mock.calls.find(c => c[0].where.rol?.in?.includes('comercial'))[0];
     expect(callArg.where.nombre).toBe('Ana López');
   });
 

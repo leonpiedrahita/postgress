@@ -6,6 +6,7 @@ const validate = require('../../middleware/validate');
 const { actualizarGlobalSchema, actualizarConfiguracionSchema, guardarConfiguracionBulkSchema } = require('../../schemas/configuracion.schema');
 
 router.get('/novedades', ctrl.obtenerNovedades);
+router.get('/etiquetas-alternativas', ctrl.obtenerEtiquetasAlternativas);
 router.get('/notificaciones/global', auth.verificarAdmin, ctrl.obtenerGlobal);
 router.put('/notificaciones/global', auth.verificarAdmin, validate(actualizarGlobalSchema), ctrl.actualizarGlobal);
 router.get('/notificaciones', auth.verificarAdmin, ctrl.obtenerConfiguracion);

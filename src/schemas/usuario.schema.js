@@ -3,7 +3,7 @@ const { z } = require('zod');
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).{6,}$/;
 const PASSWORD_MSG = 'Mínimo 6 caracteres con mayúscula, minúscula, número y carácter especial';
 const TELEFONO_REGEX = /^\+\d{7,15}$/;
-const ROLES = ['administrador', 'soporte', 'aplicaciones', 'comercial', 'cotizaciones', 'calidad', 'bodega', 'lumira', 'ventas', 'ingresos'];
+const ROLES = ['administrador', 'soporte', 'aplicaciones', 'comercial', 'Dir. Comercial', 'cotizaciones', 'calidad', 'bodega', 'lumira', 'ventas', 'ingresos'];
 
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),

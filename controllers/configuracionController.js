@@ -14,6 +14,19 @@ exports.obtenerNovedades = async (_req, res) => {
   }
 };
 
+exports.obtenerEtiquetasAlternativas = async (_req, res) => {
+  try {
+    const registro = await sistemaPrisma.configuracionNotificacion.findUnique({
+      where: { rol_tipoNotificacion: { rol: 'sistema', tipoNotificacion: 'etiquetas_alternativas' } },
+      select: { habilitado: true },
+    });
+    res.status(200).json({ habilitado: registro ? registro.habilitado : false });
+  } catch (err) {
+    console.error('Error al obtener config de etiquetas alternativas:', err);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
 exports.obtenerConfiguracion = async (req, res) => {
   try {
     const filas = await req.prisma.configuracionNotificacion.findMany({

@@ -69,6 +69,40 @@ describe('obtenerNovedades', () => {
   });
 });
 
+// ─── obtenerEtiquetasAlternativas (singleton prisma — ruta pública) ───────────
+describe('obtenerEtiquetasAlternativas', () => {
+  it('retorna habilitado false si no hay registro', async () => {
+    mockSistemaCfgNotif.findUnique.mockResolvedValue(null);
+    const res = mockRes();
+    await configuracionController.obtenerEtiquetasAlternativas({}, res);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ habilitado: false });
+  });
+
+  it('retorna el valor del registro cuando existe (true)', async () => {
+    mockSistemaCfgNotif.findUnique.mockResolvedValue({ habilitado: true });
+    const res = mockRes();
+    await configuracionController.obtenerEtiquetasAlternativas({}, res);
+    expect(res.json).toHaveBeenCalledWith({ habilitado: true });
+  });
+
+  it('consulta el registro sistema/etiquetas_alternativas', async () => {
+    mockSistemaCfgNotif.findUnique.mockResolvedValue({ habilitado: true });
+    await configuracionController.obtenerEtiquetasAlternativas({}, mockRes());
+    expect(mockSistemaCfgNotif.findUnique).toHaveBeenCalledWith({
+      where: { rol_tipoNotificacion: { rol: 'sistema', tipoNotificacion: 'etiquetas_alternativas' } },
+      select: { habilitado: true },
+    });
+  });
+
+  it('retorna 500 si findUnique falla', async () => {
+    mockSistemaCfgNotif.findUnique.mockRejectedValue(new Error('DB error'));
+    const res = mockRes();
+    await configuracionController.obtenerEtiquetasAlternativas({}, res);
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
 // ─── obtenerConfiguracion ─────────────────────────────────────────────────────
 describe('obtenerConfiguracion', () => {
   it('retorna 200 con todas las filas de configuración', async () => {
