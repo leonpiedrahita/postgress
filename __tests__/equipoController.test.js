@@ -482,6 +482,122 @@ describe('listarTodos', () => {
     await equipoController.listarTodos(mockReq(), res);
     expect(res.status).toHaveBeenCalledWith(500);
   });
+
+  it('sin query retorna array plano y findMany sin skip/take', async () => {
+    const equipos = [{ id: 2 }, { id: 1 }];
+    mockPrisma.equipo.findMany.mockResolvedValue(equipos);
+
+    const res = mockRes();
+    await equipoController.listarTodos(mockReq({ query: {} }), res);
+
+    const args = mockPrisma.equipo.findMany.mock.calls[0][0];
+    expect(args.skip).toBeUndefined();
+    expect(args.take).toBeUndefined();
+    expect(mockPrisma.equipo.count).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(equipos);
+  });
+
+  it('con page/limit retorna { data, total, page, limit } y usa skip/take correctos', async () => {
+    const data = [{ id: 5 }];
+    mockPrisma.equipo.findMany.mockResolvedValue(data);
+    mockPrisma.equipo.count.mockResolvedValue(51);
+
+    const res = mockRes();
+    await equipoController.listarTodos(mockReq({ query: { page: '2', limit: '25' } }), res);
+
+    expect(mockPrisma.equipo.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ skip: 25, take: 25, orderBy: { id: 'desc' } })
+    );
+    expect(mockPrisma.equipo.count).toHaveBeenCalledWith({
+      where: { estado: { not: 'Inactivo' } },
+    });
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith({ data, total: 51, page: 2, limit: 25 });
+  });
+
+  it.each(['abc', '0', '201'])('retorna 400 con limit inválido (%s) sin tocar la BD', async (limit) => {
+    const res = mockRes();
+    await equipoController.listarTodos(mockReq({ query: { page: '1', limit } }), res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Parámetros de paginación inválidos' });
+    expect(mockPrisma.equipo.findMany).not.toHaveBeenCalled();
+    expect(mockPrisma.equipo.count).not.toHaveBeenCalled();
+  });
+
+  it('con q aplica OR con contains insensitive en findMany y count', async () => {
+    mockPrisma.equipo.findMany.mockResolvedValue([]);
+    mockPrisma.equipo.count.mockResolvedValue(0);
+
+    const res = mockRes();
+    await equipoController.listarTodos(
+      mockReq({ query: { page: '1', limit: '25', q: 'Bomba' } }),
+      res
+    );
+
+    const whereEsperado = expect.objectContaining({
+      estado: { not: 'Inactivo' },
+      OR: expect.arrayContaining([
+        { nombre: { contains: 'Bomba', mode: 'insensitive' } },
+        { marca: { contains: 'Bomba', mode: 'insensitive' } },
+        { serie: { contains: 'Bomba', mode: 'insensitive' } },
+        { ubicacionNombre: { contains: 'Bomba', mode: 'insensitive' } },
+        { propietario: { nombre: { contains: 'Bomba', mode: 'insensitive' } } },
+        { cliente: { nombre: { contains: 'Bomba', mode: 'insensitive' } } },
+        { proveedor: { nombre: { contains: 'Bomba', mode: 'insensitive' } } },
+      ]),
+    });
+    expect(mockPrisma.equipo.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: whereEsperado })
+    );
+    expect(mockPrisma.equipo.count).toHaveBeenCalledWith({ where: whereEsperado });
+    expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  it('con q sin page/limit retorna array plano filtrado', async () => {
+    const equipos = [{ id: 1, nombre: 'Bomba' }];
+    mockPrisma.equipo.findMany.mockResolvedValue(equipos);
+
+    const res = mockRes();
+    await equipoController.listarTodos(mockReq({ query: { q: 'Bomba' } }), res);
+
+    const args = mockPrisma.equipo.findMany.mock.calls[0][0];
+    expect(args.skip).toBeUndefined();
+    expect(args.take).toBeUndefined();
+    expect(args.where.OR).toEqual(
+      expect.arrayContaining([{ nombre: { contains: 'Bomba', mode: 'insensitive' } }])
+    );
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(equipos);
+  });
+
+  it('ignora q cuando es solo espacios', async () => {
+    mockPrisma.equipo.findMany.mockResolvedValue([]);
+    mockPrisma.equipo.count.mockResolvedValue(0);
+
+    const res = mockRes();
+    await equipoController.listarTodos(
+      mockReq({ query: { page: '1', limit: '10', q: '   ' } }),
+      res
+    );
+
+    expect(mockPrisma.equipo.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { estado: { not: 'Inactivo' } } })
+    );
+    expect(res.status).toHaveBeenCalledWith(200);
+  });
+
+  it('retorna 500 genérico si Prisma falla en modo paginado', async () => {
+    mockPrisma.equipo.findMany.mockRejectedValue(new Error('DB error'));
+    mockPrisma.equipo.count.mockRejectedValue(new Error('DB error'));
+
+    const res = mockRes();
+    await equipoController.listarTodos(mockReq({ query: { page: '1', limit: '10' } }), res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({ error: 'Error interno del servidor' });
+  });
 });
 
 // ─── eliminarDocumentoLegal ───────────────────────────────────────────────────

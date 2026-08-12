@@ -509,27 +509,68 @@ exports.buscarequipos = async (req, res) => {
   }
 };
 
-// Listar todos los equipos sin paginación (para exportar a Excel y Cronograma)
+// Listar todos los equipos (para exportar a Excel y Cronograma).
+// Soporta paginación opcional con ?page=1&limit=50 (responde { data, total, page, limit })
+// y búsqueda opcional con ?q= (insensible a mayúsculas sobre nombre, marca, serie,
+// ubicación y nombres de propietario/cliente/proveedor).
 exports.listarTodos = async (req, res) => {
   const prisma = req.prisma;
+
+  const paginacion = parsePaginacion(req.query);
+  if (paginacion?.error) {
+    return res.status(400).json({ error: 'Parámetros de paginación inválidos' });
+  }
+
+  const where = { estado: { not: 'Inactivo' } };
+
+  const q = typeof req.query?.q === 'string' ? req.query.q.trim().slice(0, 100) : '';
+  if (q) {
+    where.OR = [
+      { nombre: { contains: q, mode: 'insensitive' } },
+      { marca: { contains: q, mode: 'insensitive' } },
+      { serie: { contains: q, mode: 'insensitive' } },
+      { ubicacionNombre: { contains: q, mode: 'insensitive' } },
+      { propietario: { nombre: { contains: q, mode: 'insensitive' } } },
+      { cliente: { nombre: { contains: q, mode: 'insensitive' } } },
+      { proveedor: { nombre: { contains: q, mode: 'insensitive' } } },
+    ];
+  }
+
+  const select = {
+    id: true,
+    nombre: true,
+    marca: true,
+    serie: true,
+    asesor: true,
+    ubicacionNombre: true,
+    ubicacionDireccion: true,
+    estado: true,
+    tipoDeContrato: true,
+    fechaDePreventivo: true,
+    propietario: { select: { nombre: true, sedePrincipal: { select: { ciudad: true } } } },
+    cliente:     { select: { nombre: true, nit: true, sedePrincipal: { select: { ciudad: true } } } },
+    proveedor:   { select: { nombre: true, sedePrincipal: { select: { ciudad: true } } } },
+    referencia: { select: { periodicidadmantenimiento: true } },
+  };
+
   try {
+    if (paginacion) {
+      const [data, total] = await Promise.all([
+        prisma.equipo.findMany({
+          where,
+          select,
+          orderBy: { id: 'desc' },
+          skip: paginacion.skip,
+          take: paginacion.take,
+        }),
+        prisma.equipo.count({ where }),
+      ]);
+      return res.status(200).json({ data, total, page: paginacion.page, limit: paginacion.limit });
+    }
+
     const equipos = await prisma.equipo.findMany({
-      where: { estado: { not: 'Inactivo' } },
-      select: {
-        id: true,
-        nombre: true,
-        marca: true,
-        serie: true,
-        ubicacionNombre: true,
-        ubicacionDireccion: true,
-        estado: true,
-        tipoDeContrato: true,
-        fechaDePreventivo: true,
-        propietario: { select: { nombre: true, sedePrincipal: { select: { ciudad: true } } } },
-        cliente:     { select: { nombre: true, sedePrincipal: { select: { ciudad: true } } } },
-        proveedor:   { select: { nombre: true, sedePrincipal: { select: { ciudad: true } } } },
-        referencia: { select: { periodicidadmantenimiento: true } },
-      },
+      where,
+      select,
       orderBy: { id: 'desc' },
     });
     res.status(200).json(equipos);
