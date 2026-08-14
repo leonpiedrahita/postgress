@@ -12,6 +12,9 @@ const mockPrisma = {
     create: jest.fn(),
     update: jest.fn(),
   },
+  equipo: {
+    findMany: jest.fn(),
+  },
 };
 
 const mockReq = (overrides = {}) => ({
@@ -48,6 +51,41 @@ describe('listar', () => {
     mockPrisma.cliente.findMany.mockRejectedValue(new Error('DB error'));
     const res = mockRes();
     await clienteController.listar(mockReq(), res);
+    expect(res.status).toHaveBeenCalledWith(500);
+  });
+});
+
+// ─── exportar ─────────────────────────────────────────────────────────────────
+describe('exportar', () => {
+  it('mapea nit, razón social, ciudad y deriva el asesor por NIT', async () => {
+    mockPrisma.cliente.findMany.mockResolvedValue([
+      { nit: '900111', nombre: 'Cliente A', sedePrincipal: { ciudad: 'Medellín' } },
+      { nit: '900222', nombre: 'Cliente B', sedePrincipal: { ciudad: 'Bogotá' } },
+      { nit: '900333', nombre: 'Cliente C', sedePrincipal: { ciudad: 'Cali' } },
+    ]);
+    mockPrisma.equipo.findMany.mockResolvedValue([
+      // Proveedor Biosystems → el asesor se busca por el NIT del cliente (900111)
+      { asesor: 'Ana', cliente: { nit: '900111' }, proveedor: { nit: '811003513' } },
+      // Proveedor no-Biosystems → el asesor se busca por el NIT del proveedor (900222)
+      { asesor: 'Luis', cliente: { nit: '999999' }, proveedor: { nit: '900222' } },
+    ]);
+
+    const res = mockRes();
+    await clienteController.exportar(mockReq(), res);
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith([
+      { nit: '900111', nombre: 'Cliente A', ciudad: 'Medellín', asesor: 'Ana' },
+      { nit: '900222', nombre: 'Cliente B', ciudad: 'Bogotá', asesor: 'Luis' },
+      { nit: '900333', nombre: 'Cliente C', ciudad: 'Cali', asesor: '' },
+    ]);
+  });
+
+  it('retorna 500 si Prisma lanza error', async () => {
+    mockPrisma.cliente.findMany.mockRejectedValue(new Error('DB error'));
+    mockPrisma.equipo.findMany.mockResolvedValue([]);
+    const res = mockRes();
+    await clienteController.exportar(mockReq(), res);
     expect(res.status).toHaveBeenCalledWith(500);
   });
 });

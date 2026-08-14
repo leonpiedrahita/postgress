@@ -16,6 +16,7 @@ const { registrarSchema, actualizarSchema, agregarSedeSchema } = require('../../
 router.use(attachPrisma);
 //.com/api/cliente/listar
 router.get("/listar" ,auth.verificarUsuario, clienteController.listar);
+router.get("/exportar", auth.verificarUsuario, clienteController.exportar);
 //.com/api/cliente/registrar
 router.post("/registrar",auth.verificarAdminCot, validate(registrarSchema), clienteController.registrar);
 //.com/api/cliente/actualizar/id del elemento de la colección que quiero modificar

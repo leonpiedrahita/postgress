@@ -22,6 +22,51 @@ exports.listar = async (req, res) => {
   }
 };
 
+// Exporta clientes con NIT, razón social, ciudad y asesor asignado. El asesor
+// no vive en el cliente sino en los equipos (se asigna por NIT), así que se
+// deriva con la misma lógica del import: nitBuscar = nit del proveedor, salvo
+// que el proveedor sea Biosystems, en cuyo caso se usa el nit del cliente.
+exports.exportar = async (req, res) => {
+  const prisma = req.prisma;
+  const NIT_BIOSYSTEMS = process.env.NIT_BIOSYSTEMS || '811003513';
+  try {
+    const [clientes, equipos] = await Promise.all([
+      prisma.cliente.findMany({
+        select: { nit: true, nombre: true, sedePrincipal: { select: { ciudad: true } } },
+        orderBy: { nombre: 'asc' },
+      }),
+      prisma.equipo.findMany({
+        where: { estado: { not: 'Inactivo' }, asesor: { not: null } },
+        select: { asesor: true, cliente: { select: { nit: true } }, proveedor: { select: { nit: true } } },
+      }),
+    ]);
+
+    // Mapa NIT → asesor (mismo criterio que importarAsesor)
+    const mapaAsesor = new Map();
+    for (const eq of equipos) {
+      const nitProveedor = String(eq.proveedor?.nit || '').trim();
+      const nitBuscar = nitProveedor === NIT_BIOSYSTEMS
+        ? String(eq.cliente?.nit || '').trim()
+        : nitProveedor;
+      if (nitBuscar && eq.asesor && !mapaAsesor.has(nitBuscar)) {
+        mapaAsesor.set(nitBuscar, eq.asesor);
+      }
+    }
+
+    const data = clientes.map((c) => ({
+      nit: c.nit,
+      nombre: c.nombre,
+      ciudad: c.sedePrincipal?.ciudad || '',
+      asesor: mapaAsesor.get(String(c.nit || '').trim()) || '',
+    }));
+
+    res.status(200).json(data);
+  } catch (err) {
+    console.error('Error al exportar clientes:', err);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
 exports.registrar = async (req, res) => {
   const prisma = req.prisma;
   try {
