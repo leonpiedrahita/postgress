@@ -7,6 +7,11 @@ const PORT = process.env.PORT || 5000;
 const apiRouter = require('./src/routes');
 const cors = require("cors");
 
+// Detrás del proxy de Render (un solo salto): confía en el primer proxy para
+// que express-rate-limit identifique la IP real vía X-Forwarded-For. No usar
+// 'true' (confiaría en cualquier proxy y permitiría falsear la IP).
+app.set('trust proxy', 1);
+
 const allowedOrigins = [
   'https://gomaint.vercel.app',
   'http://localhost:5173',
